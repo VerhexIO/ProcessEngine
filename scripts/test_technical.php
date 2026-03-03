@@ -52,11 +52,11 @@ foreach($tables as $t) {
 
 // ============================================================
 echo PHP_EOL . "=== 2. STEP_TABLE YENI SUTUNLAR ===" . PHP_EOL;
-$required_cols = array("step_type", "child_flow_id", "child_project_id", "wait_mode");
-$r = db_query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mantis_plugin_ProcessEngine_step_table'");
+$required_cols = array("step_type", "child_flow_id", "child_project_id", "wait_mode", "note_required", "start_trigger", "completion_criteria", "completion_status");
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_step_table");
 $existing = array();
 while($row = db_fetch_array($r)) {
-    $existing[] = $row["COLUMN_NAME"];
+    $existing[] = $row["field"];
 }
 foreach($required_cols as $col) {
     if(in_array($col, $existing)) {
@@ -69,10 +69,10 @@ foreach($required_cols as $col) {
 // ============================================================
 echo PHP_EOL . "=== 3. TRANSITION_TABLE YENI SUTUNLAR ===" . PHP_EOL;
 $required_cols2 = array("condition_type", "label");
-$r = db_query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mantis_plugin_ProcessEngine_transition_table'");
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_transition_table");
 $existing2 = array();
 while($row = db_fetch_array($r)) {
-    $existing2[] = $row["COLUMN_NAME"];
+    $existing2[] = $row["field"];
 }
 foreach($required_cols2 as $col) {
     if(in_array($col, $existing2)) {
@@ -83,12 +83,28 @@ foreach($required_cols2 as $col) {
 }
 
 // ============================================================
+echo PHP_EOL . "=== 3b. LOG_TABLE FAZ 11 SUTUNLARI ===" . PHP_EOL;
+$required_log_cols = array("event_type", "transition_label");
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_log_table");
+$existing_log = array();
+while($row = db_fetch_array($r)) {
+    $existing_log[$row["field"]] = $row["default"];
+}
+foreach($required_log_cols as $col) {
+    if(isset($existing_log[$col])) {
+        test_ok("log_table." . $col, "default=" . ($existing_log[$col] !== null ? $existing_log[$col] : 'NULL'));
+    } else {
+        test_fail("log_table." . $col, "sutun bulunamadi");
+    }
+}
+
+// ============================================================
 echo PHP_EOL . "=== 4. PROCESS_INSTANCE TABLO YAPISI ===" . PHP_EOL;
 $required_inst = array("id","bug_id","flow_id","current_step_id","parent_instance_id","parent_step_id","status","created_at","completed_at");
-$r = db_query("SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mantis_plugin_ProcessEngine_process_instance_table'");
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_process_instance_table");
 $existing3 = array();
 while($row = db_fetch_array($r)) {
-    $existing3[$row["COLUMN_NAME"]] = $row["COLUMN_TYPE"];
+    $existing3[$row["field"]] = $row["type"];
 }
 foreach($required_inst as $col) {
     if(isset($existing3[$col])) {
@@ -100,10 +116,10 @@ foreach($required_inst as $col) {
 
 // ============================================================
 echo PHP_EOL . "=== 5. INDEX KONTROLU ===" . PHP_EOL;
-$r = db_query("SELECT INDEX_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mantis_plugin_ProcessEngine_process_instance_table'");
+$r = db_query("SHOW INDEX FROM mantis_plugin_ProcessEngine_process_instance_table");
 $indexes = array();
 while($row = db_fetch_array($r)) {
-    $indexes[$row["INDEX_NAME"]][] = $row["COLUMN_NAME"];
+    $indexes[$row["key_name"]][] = $row["column_name"];
 }
 foreach($indexes as $name => $cols) {
     test_ok($name, implode(", ", $cols));
@@ -157,7 +173,9 @@ $funcs2 = array(
     "process_get_dashboard_stats",
     "process_get_dashboard_bugs",
     "process_log_status_change",
-    "process_get_flow_progress"
+    "process_get_flow_progress",
+    "process_get_unified_timeline",
+    "process_check_step_exit_conditions"
 );
 foreach($funcs2 as $f) {
     if(function_exists($f)) {
@@ -216,6 +234,7 @@ echo PHP_EOL . "=== 11. DIL DOSYALARI ===" . PHP_EOL;
 $tr = file_get_contents($t_plugin_dir . '/lang/strings_turkish.txt');
 $en = file_get_contents($t_plugin_dir . '/lang/strings_english.txt');
 $required_strings = array(
+    // Mevcut (Faz 1-10)
     "subprocess", "step_type", "step_type_normal", "step_type_subprocess",
     "child_flow", "child_project", "wait_mode", "wait_mode_all", "wait_mode_any",
     "process_tree", "view_process_tree", "parent_process", "child_processes",
@@ -224,7 +243,25 @@ $required_strings = array(
     "condition_field", "condition_value", "condition_type", "condition_none",
     "branching_auto", "sla_tree_summary", "sla_tree_total", "sla_tree_worst",
     "parent_link", "child_summary", "subprocess_of",
-    "tree_restricted_access", "tree_no_tree", "tree_root"
+    "tree_restricted_access", "tree_no_tree", "tree_root",
+    // Faz 11: Olay tipleri
+    "event_type_process_started", "event_type_status_change", "event_type_step_advanced",
+    "event_type_subprocess_created", "event_type_subprocess_completed",
+    "event_type_parent_advanced", "event_type_out_of_flow", "event_type_note_added",
+    // Faz 11: Yari-manuel subprocess
+    "subprocess_needs_child", "btn_create_subprocess", "or",
+    "link_child_placeholder", "btn_link_child", "subprocess_already_exists",
+    "subprocess_created_note", "subprocess_created_success", "subprocess_linked_note",
+    // Faz 11: Ilerleme modali
+    "modal_advance_title", "modal_note_label", "required",
+    "modal_note_placeholder", "note_required_error",
+    // Faz 11: Cikis kosullari
+    "exit_condition_status_required", "exit_condition_resolve_required",
+    // Faz 11: Tasarimci — adim yasam dongusu
+    "start_trigger", "start_trigger_auto", "start_trigger_on_assign",
+    "start_trigger_manual", "start_trigger_on_create",
+    "completion_criteria", "completion_manual", "completion_on_status",
+    "completion_on_resolve", "completion_status", "note_required_label"
 );
 $tr_ok = 0; $en_ok = 0; $missing = 0;
 foreach($required_strings as $s) {
@@ -319,7 +356,10 @@ echo PHP_EOL . "=== 15. DASHBOARD STATS FONKSIYON TESTI ===" . PHP_EOL;
 try {
     $t_login_user = isset($argv[1]) ? $argv[1] : 'administrator';
     auth_attempt_script_login($t_login_user);
+    // Plugin baglami olustur (plugin_table() icin gerekli)
+    plugin_push_current('ProcessEngine');
     $stats = process_get_dashboard_stats();
+    plugin_pop_current();
     test_ok("process_get_dashboard_stats()", "total=" . $stats["total"] . ", active=" . $stats["active"] . ", sla_exceeded=" . $stats["sla_exceeded"]);
     if(isset($stats["waiting_subprocesses"])) {
         test_ok("waiting_subprocesses alani mevcut", "deger=" . $stats["waiting_subprocesses"]);
