@@ -172,8 +172,13 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                     } else if( $t_bug_row['sla_status'] === 'EXCEEDED' ) {
                                         $t_sla_class = 'pe-sla-exceeded';
                                     }
+                                    $t_inst_status = isset( $t_bug_row['instance_status'] ) ? $t_bug_row['instance_status'] : '';
+                                    $t_row_class = '';
+                                    if( $t_inst_status === 'COMPLETED' || $t_inst_status === 'CANCELLED' ) {
+                                        $t_row_class = ' class="pe-row-faded"';
+                                    }
                             ?>
-                            <tr>
+                            <tr<?php echo $t_row_class; ?>>
                                 <td>
                                     <a href="<?php echo string_get_bug_view_url( $t_bug_row['bug_id'] ); ?>">
                                         <?php echo bug_format_id( $t_bug_row['bug_id'] ); ?>
@@ -182,7 +187,6 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                 <td><?php echo string_display_line( $t_bug_row['summary'] ); ?></td>
                                 <td>
                                     <?php
-                                    $t_inst_status = isset( $t_bug_row['instance_status'] ) ? $t_bug_row['instance_status'] : '';
                                     if( $t_inst_status === 'WAITING' ) {
                                         echo '<span class="pe-status-badge pe-badge-waiting-step">';
                                         echo '<i class="fa fa-hourglass-half"></i> ';
@@ -245,14 +249,18 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                 <td><?php echo date( 'Y-m-d H:i', $t_bug_row['updated_at'] ); ?></td>
                                 <?php if( $t_can_action ) { ?>
                                 <td class="pe-actions-col">
-                                    <?php if( $t_bug_row['bug_status'] < config_get( 'bug_resolved_status_threshold' ) ) { ?>
+                                    <?php if( $t_inst_status === 'ACTIVE' ) { ?>
                                     <button class="btn btn-xs btn-primary pe-action-advance"
                                             data-bug-id="<?php echo $t_bug_row['bug_id']; ?>"
                                             title="<?php echo plugin_lang_get( 'action_advance_confirm' ); ?>">
                                         <i class="fa fa-forward"></i>
                                     </button>
+                                    <?php } else if( $t_inst_status === 'WAITING' ) { ?>
+                                    <span class="pe-waiting-label-sm">
+                                        <i class="fa fa-hourglass-half"></i>
+                                    </span>
                                     <?php } ?>
-                                    <?php if( $t_bug_row['sla_status'] !== 'NORMAL' ) { ?>
+                                    <?php if( $t_bug_row['sla_status'] !== 'NORMAL' && $t_inst_status !== 'COMPLETED' && $t_inst_status !== 'CANCELLED' ) { ?>
                                     <button class="btn btn-xs btn-warning pe-action-sla"
                                             data-bug-id="<?php echo $t_bug_row['bug_id']; ?>"
                                             title="<?php echo plugin_lang_get( 'action_sla_refreshed' ); ?>">
@@ -274,7 +282,6 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
 
 <input type="hidden" id="pe-action-url" value="<?php echo plugin_page( 'dashboard_action' ); ?>" />
 <input type="hidden" id="pe-security-token" value="<?php echo form_security_token( 'ProcessEngine_dashboard_action' ); ?>" />
-<script src="<?php echo plugin_file( 'process_panel.js' ); ?>"></script>
 
 <?php
 layout_page_end();

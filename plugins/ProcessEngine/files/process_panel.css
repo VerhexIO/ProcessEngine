@@ -319,3 +319,73 @@
 .pe-tree-wait-mode .fa {
     margin-right: 2px;
 }
+
+/* ---- Faz 10: Bug View Advance Button & Waiting Label ---- */
+.pe-info-actions {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+.pe-info-next-step {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.pe-info-next-step .pe-info-label {
+    display: inline;
+    margin-right: 4px;
+}
+.pe-bugview-advance {
+    margin-right: 6px;
+}
+.pe-waiting-label {
+    display: inline-block;
+    padding: 6px 14px;
+    background-color: #f39c12;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.pe-waiting-label .fa {
+    margin-right: 4px;
+}
+.pe-waiting-label-sm {
+    display: inline-block;
+    color: #f39c12;
+    font-size: 14px;
+}
+.pe-sla-waiting-text {
+    color: #f39c12;
+    font-weight: 600;
+}
+.pe-badge-subprocess-step {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8e44ad;
+    background-color: #f3e5f5;
+    margin-left: 6px;
+}
+.pe-badge-subprocess-hint {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #e67e22;
+    background-color: #fef5e7;
+    margin-left: 6px;
+}
+
+/* Dashboard: faded rows for completed/cancelled */
+.pe-row-faded {
+    opacity: 0.5;
+}
+.pe-row-faded:hover {
+    opacity: 0.8;
+}

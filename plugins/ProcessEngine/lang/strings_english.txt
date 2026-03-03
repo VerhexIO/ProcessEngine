@@ -238,3 +238,12 @@ $s_plugin_ProcessEngine_flow_unpublish_confirm = 'Are you sure you want to deact
 $s_plugin_ProcessEngine_flow_unpublish_has_instances = 'Cannot deactivate this flow because there are active processes linked to it.';
 $s_plugin_ProcessEngine_flow_unpublish_not_active = 'This flow is not currently active.';
 $s_plugin_ProcessEngine_flow_description_placeholder = 'Write notes, feature descriptions or instructions about this flow...';
+
+# Phase 10: End-to-End User Experience
+$s_plugin_ProcessEngine_btn_advance_step = 'Advance Step';
+$s_plugin_ProcessEngine_next_step = 'Next Step';
+$s_plugin_ProcessEngine_next_step_subprocess = 'This step will create a subprocess';
+$s_plugin_ProcessEngine_subprocess_waiting = 'Waiting for Subprocess';
+$s_plugin_ProcessEngine_advance_confirm_subprocess = 'This will create a subprocess. Continue?';
+$s_plugin_ProcessEngine_manual_link_success = 'Process link created';
+$s_plugin_ProcessEngine_manual_link_not_subprocess = 'Parent issue current step is not a subprocess step';

@@ -1,0 +1,27 @@
+{
+  "name": "mantis-process-plugin",
+  "version": "1.0.0",
+  "description": "MantisBT 2.24+ üzerinde çalışan departmanlar arası iş akışı yönetim motoru. Fiyat talebi, ürün geliştirme gibi çok adımlı süreçleri otomatize eder.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VerhexIO/ProcessEngine.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/VerhexIO/ProcessEngine/issues"
+  },
+  "homepage": "https://github.com/VerhexIO/ProcessEngine#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

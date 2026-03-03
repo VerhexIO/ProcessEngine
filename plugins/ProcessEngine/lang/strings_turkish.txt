@@ -238,3 +238,12 @@ $s_plugin_ProcessEngine_flow_unpublish_confirm = 'Bu akışı pasife almak isted
 $s_plugin_ProcessEngine_flow_unpublish_has_instances = 'Bu akışa bağlı aktif süreçler bulunduğundan pasife alınamaz.';
 $s_plugin_ProcessEngine_flow_unpublish_not_active = 'Bu akış zaten aktif durumda değil.';
 $s_plugin_ProcessEngine_flow_description_placeholder = 'Akış hakkında not, özellik açıklaması veya talimatlar yazın...';
+
+# Faz 10: Uçtan Uca Kullanıcı Deneyimi
+$s_plugin_ProcessEngine_btn_advance_step = 'Adımı İlerlet';
+$s_plugin_ProcessEngine_next_step = 'Sonraki Adım';
+$s_plugin_ProcessEngine_next_step_subprocess = 'Bu adım alt süreç oluşturacak';
+$s_plugin_ProcessEngine_subprocess_waiting = 'Alt Süreç Bekleniyor';
+$s_plugin_ProcessEngine_advance_confirm_subprocess = 'Bu işlem alt süreç oluşturacak. Devam etmek istiyor musunuz?';
+$s_plugin_ProcessEngine_manual_link_success = 'Süreç bağlantısı oluşturuldu';
+$s_plugin_ProcessEngine_manual_link_not_subprocess = 'Ebeveyn sorunun mevcut adımı alt süreç adımı değil';

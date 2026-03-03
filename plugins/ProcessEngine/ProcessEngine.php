@@ -68,6 +68,9 @@ class ProcessEnginePlugin extends MantisPlugin {
             'EVENT_LAYOUT_RESOURCES'  => 'on_layout_resources',
             'EVENT_VIEW_BUG_EXTRA'    => 'on_view_bug_extra',
             'EVENT_MENU_MANAGE'       => 'on_menu_manage',
+            // Not: MantisBT 2.24.x'te EVENT_RELATIONSHIP_ADDED ateşlenmiyor.
+            // İleride MantisBT bu event'i eklerse aşağıdaki satırı açın:
+            // 'EVENT_RELATIONSHIP_ADDED' => 'on_relationship_added',
         );
     }
 
@@ -452,6 +455,38 @@ class ProcessEnginePlugin extends MantisPlugin {
     }
 
     /**
+     * Hook: EVENT_RELATIONSHIP_ADDED - link manual child to subprocess
+     *
+     * @param string $p_event        Event name
+     * @param int    $p_relationship_id  Relationship ID (from bug_relationship_table)
+     */
+    public function on_relationship_added( $p_event, $p_relationship_id ) {
+        // MantisBT bug_relationship_table'dan ilişkiyi oku
+        $t_rel_table = db_get_table( 'bug_relationship' );
+        db_param_push();
+        $t_query = "SELECT * FROM $t_rel_table WHERE id = " . db_param();
+        $t_result = db_query( $t_query, array( (int) $p_relationship_id ) );
+        $t_rel = db_fetch_array( $t_result );
+        if( $t_rel === false ) {
+            return;
+        }
+
+        // BUG_DEPENDANT (2) = parent-of: source=parent, dest=child
+        $t_type = (int) $t_rel['relationship_type'];
+        if( $t_type !== BUG_DEPENDANT ) {
+            return;
+        }
+
+        $t_parent_bug_id = (int) $t_rel['source_bug_id'];
+        $t_child_bug_id = (int) $t_rel['destination_bug_id'];
+
+        require_once( __DIR__ . '/core/process_api.php' );
+        require_once( __DIR__ . '/core/subprocess_api.php' );
+
+        subprocess_link_manual_child( $t_child_bug_id, $t_parent_bug_id );
+    }
+
+    /**
      * Hook: EVENT_MENU_MAIN - add "Process Panel" to main menu
      */
     public function on_menu_main( $p_event ) {
@@ -486,7 +521,8 @@ class ProcessEnginePlugin extends MantisPlugin {
      */
     public function on_layout_resources( $p_event ) {
         $t_css = '<link rel="stylesheet" href="' . plugin_file( 'process_panel.css' ) . '" />' . "\n";
-        return $t_css;
+        $t_js = '<script src="' . plugin_file( 'process_panel.js' ) . '"></script>' . "\n";
+        return $t_css . $t_js;
     }
 
     /**
@@ -498,6 +534,7 @@ class ProcessEnginePlugin extends MantisPlugin {
         }
 
         require_once( __DIR__ . '/core/process_api.php' );
+        require_once( __DIR__ . '/core/subprocess_api.php' );
 
         $t_logs = process_get_logs_for_bug( $p_bug_id );
         if( empty( $t_logs ) ) {
@@ -506,8 +543,32 @@ class ProcessEnginePlugin extends MantisPlugin {
 
         $t_progress = process_get_flow_progress( $p_bug_id );
 
+        // Instance ve sonraki adım bilgisi
+        $t_instance = subprocess_get_instance( $p_bug_id );
+        $t_next_step_info = null;
+        if( $t_instance !== null && $t_progress !== null && $t_progress['flow'] !== null ) {
+            $t_valid_trans = process_get_valid_transitions(
+                (int) $t_progress['flow']['id'],
+                (int) $t_instance['current_step_id'],
+                $p_bug_id
+            );
+            if( !empty( $t_valid_trans ) ) {
+                $t_next_step_id = (int) $t_valid_trans[0]['to_step_id'];
+                $t_step_table = plugin_table( 'step' );
+                db_param_push();
+                $t_ns_result = db_query(
+                    "SELECT * FROM $t_step_table WHERE id = " . db_param(),
+                    array( $t_next_step_id )
+                );
+                $t_ns_row = db_fetch_array( $t_ns_result );
+                if( $t_ns_row !== false ) {
+                    $t_next_step_info = $t_ns_row;
+                }
+            }
+        }
+
         // 1. Süreç Bilgi Paneli
-        $this->render_process_info_panel( $p_bug_id, $t_progress );
+        $this->render_process_info_panel( $p_bug_id, $t_progress, $t_instance, $t_next_step_info );
 
         // 2. Görsel Adım Çubuğu
         if( $t_progress !== null ) {
@@ -524,7 +585,7 @@ class ProcessEnginePlugin extends MantisPlugin {
     /**
      * Render the process info panel (current step, department, progress, SLA, handler)
      */
-    private function render_process_info_panel( $p_bug_id, $t_progress ) {
+    private function render_process_info_panel( $p_bug_id, $t_progress, $p_instance = null, $p_next_step = null ) {
         if( $t_progress === null ) {
             return;
         }
@@ -546,16 +607,40 @@ class ProcessEnginePlugin extends MantisPlugin {
         }
         $t_progress_num = $t_current_index >= 0 ? ( $t_current_index + 1 ) : $t_completed;
 
+        // Instance durumu
+        $t_inst_status = ( $p_instance !== null ) ? $p_instance['status'] : '';
+
         // SLA kalan süre
         $t_sla_text = '-';
         $t_sla_class = '';
-        if( $t_progress['current_sla'] !== null ) {
+        if( $t_inst_status === 'WAITING' ) {
+            $t_sla_text = plugin_lang_get( 'subprocess_waiting' );
+            $t_sla_class = 'pe-sla-waiting-text';
+        } else if( $t_progress['current_sla'] !== null ) {
             $t_sla = $t_progress['current_sla'];
             if( $t_sla['remaining_sec'] > 0 ) {
                 $t_sla_text = $t_sla['remaining_hrs'] . ' ' . plugin_lang_get( 'hours' );
             } else {
                 $t_sla_text = plugin_lang_get( 'sla_overdue' );
                 $t_sla_class = 'pe-sla-overdue-text';
+            }
+        }
+
+        // Buton gösterim koşulları
+        $t_can_action = access_has_global_level( plugin_config_get( 'action_threshold' ) );
+        $t_show_advance = ( $t_can_action && $t_inst_status === 'ACTIVE' && $p_next_step !== null );
+        $t_show_waiting = ( $t_inst_status === 'WAITING' );
+        $t_next_is_subprocess = ( $p_next_step !== null && isset( $p_next_step['step_type'] ) && $p_next_step['step_type'] === 'subprocess' );
+
+        // Mevcut adım subprocess mi?
+        $t_current_is_subprocess = false;
+        if( $p_instance !== null && (int) $p_instance['current_step_id'] > 0 ) {
+            $t_cs_table = plugin_table( 'step' );
+            db_param_push();
+            $t_cs_r = db_query( "SELECT step_type FROM $t_cs_table WHERE id = " . db_param(), array( (int) $p_instance['current_step_id'] ) );
+            $t_cs_row = db_fetch_array( $t_cs_r );
+            if( $t_cs_row !== false && isset( $t_cs_row['step_type'] ) && $t_cs_row['step_type'] === 'subprocess' ) {
+                $t_current_is_subprocess = true;
             }
         }
 ?>
@@ -573,7 +658,12 @@ class ProcessEnginePlugin extends MantisPlugin {
                 <div class="pe-info-panel">
                     <div class="pe-info-item">
                         <div class="pe-info-label"><?php echo plugin_lang_get( 'current_step' ); ?></div>
-                        <div class="pe-info-value"><?php echo string_display_line( $t_step_name ); ?></div>
+                        <div class="pe-info-value">
+                            <?php echo string_display_line( $t_step_name ); ?>
+                            <?php if( $t_current_is_subprocess ) { ?>
+                                <span class="pe-badge-subprocess-step"><i class="fa fa-sitemap"></i> <?php echo plugin_lang_get( 'subprocess_step' ); ?></span>
+                            <?php } ?>
+                        </div>
                     </div>
                     <div class="pe-info-item">
                         <div class="pe-info-label"><?php echo plugin_lang_get( 'col_department' ); ?></div>
@@ -592,10 +682,38 @@ class ProcessEnginePlugin extends MantisPlugin {
                         <div class="pe-info-value"><?php echo string_display_line( $t_handler_name ); ?></div>
                     </div>
                 </div>
+                <?php if( $p_next_step !== null && $t_inst_status !== 'COMPLETED' && $t_inst_status !== 'CANCELLED' ) { ?>
+                <div class="pe-info-next-step">
+                    <span class="pe-info-label"><?php echo plugin_lang_get( 'next_step' ); ?>:</span>
+                    <strong><?php echo string_display_line( $p_next_step['name'] ); ?></strong>
+                    <?php if( $t_next_is_subprocess ) { ?>
+                        <span class="pe-badge-subprocess-hint"><i class="fa fa-sitemap"></i> <?php echo plugin_lang_get( 'next_step_subprocess' ); ?></span>
+                    <?php } ?>
+                </div>
+                <?php } ?>
+                <div class="pe-info-actions">
+                    <?php if( $t_show_advance ) { ?>
+                    <button class="btn btn-sm btn-primary pe-bugview-advance"
+                            data-bug-id="<?php echo (int) $p_bug_id; ?>"
+                            data-is-subprocess="<?php echo $t_next_is_subprocess ? '1' : '0'; ?>">
+                        <i class="fa fa-forward"></i>
+                        <?php echo plugin_lang_get( 'btn_advance_step' ); ?>
+                    </button>
+                    <?php } else if( $t_show_waiting ) { ?>
+                    <span class="pe-waiting-label">
+                        <i class="fa fa-hourglass-half"></i>
+                        <?php echo plugin_lang_get( 'subprocess_waiting' ); ?>
+                    </span>
+                    <?php } ?>
+                </div>
             </div>
         </div>
     </div>
 </div>
+<?php if( $t_show_advance ) { ?>
+<input type="hidden" id="pe-bugview-token" value="<?php echo form_security_token( 'ProcessEngine_dashboard_action' ); ?>" />
+<input type="hidden" id="pe-bugview-action-url" value="<?php echo plugin_page( 'dashboard_action' ); ?>" />
+<?php } ?>
 <?php
     }
 
