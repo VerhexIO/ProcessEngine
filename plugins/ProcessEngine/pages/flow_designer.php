@@ -398,6 +398,41 @@ if( $t_flow_id === 0 ) {
                         </select>
                     </div>
                 </div>
+
+                <hr style="margin: 10px 0;" />
+
+                <div class="form-group">
+                    <label><?php echo plugin_lang_get( 'start_trigger' ); ?></label>
+                    <select id="pe-modal-start-trigger" class="form-control input-sm">
+                        <option value="auto"><?php echo plugin_lang_get( 'start_trigger_auto' ); ?></option>
+                        <option value="on_assign"><?php echo plugin_lang_get( 'start_trigger_on_assign' ); ?></option>
+                        <option value="manual"><?php echo plugin_lang_get( 'start_trigger_manual' ); ?></option>
+                        <option value="on_create"><?php echo plugin_lang_get( 'start_trigger_on_create' ); ?></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><?php echo plugin_lang_get( 'completion_criteria' ); ?></label>
+                    <select id="pe-modal-completion-criteria" class="form-control input-sm">
+                        <option value="manual"><?php echo plugin_lang_get( 'completion_manual' ); ?></option>
+                        <option value="on_status"><?php echo plugin_lang_get( 'completion_on_status' ); ?></option>
+                        <option value="on_resolve"><?php echo plugin_lang_get( 'completion_on_resolve' ); ?></option>
+                    </select>
+                </div>
+                <div class="form-group" id="pe-completion-status-group" style="display:none;">
+                    <label><?php echo plugin_lang_get( 'completion_status' ); ?></label>
+                    <select id="pe-modal-completion-status" class="form-control input-sm">
+                        <option value="0">--</option>
+                        <?php foreach( $t_status_enum as $t_val => $t_label ) { ?>
+                        <option value="<?php echo $t_val; ?>"><?php echo string_display_line( $t_label ); ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="pe-modal-note-required" />
+                        <?php echo plugin_lang_get( 'note_required_label' ); ?>
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-sm btn-default" data-dismiss="modal"><?php echo plugin_lang_get( 'btn_cancel' ); ?></button>

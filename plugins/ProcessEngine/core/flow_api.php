@@ -214,10 +214,11 @@ function flow_add_step( $p_flow_id, $p_data ) {
     $t_table = plugin_table( 'step' );
     db_param_push();
     db_query(
-        "INSERT INTO $t_table (flow_id, name, department, mantis_status, sla_hours, step_order, role, position_x, position_y, handler_id, step_type, child_flow_id, child_project_id, wait_mode)
+        "INSERT INTO $t_table (flow_id, name, department, mantis_status, sla_hours, step_order, role, position_x, position_y, handler_id, step_type, child_flow_id, child_project_id, wait_mode, note_required, start_trigger, completion_criteria, completion_status)
          VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
          . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
-         . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
+         . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+         . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
         array(
             (int) $p_flow_id,
             $p_data['name'],
@@ -233,6 +234,10 @@ function flow_add_step( $p_flow_id, $p_data ) {
             isset( $p_data['child_flow_id'] ) && $p_data['child_flow_id'] ? (int) $p_data['child_flow_id'] : null,
             isset( $p_data['child_project_id'] ) && $p_data['child_project_id'] ? (int) $p_data['child_project_id'] : null,
             isset( $p_data['wait_mode'] ) ? $p_data['wait_mode'] : 'all',
+            isset( $p_data['note_required'] ) ? (int) $p_data['note_required'] : 0,
+            isset( $p_data['start_trigger'] ) ? $p_data['start_trigger'] : 'auto',
+            isset( $p_data['completion_criteria'] ) ? $p_data['completion_criteria'] : 'manual',
+            isset( $p_data['completion_status'] ) ? (int) $p_data['completion_status'] : 0,
         )
     );
 
@@ -254,7 +259,7 @@ function flow_update_step( $p_step_id, $p_data ) {
     $t_sets = array();
     $t_params = array();
 
-    $t_fields = array( 'name', 'department', 'mantis_status', 'sla_hours', 'step_order', 'role', 'position_x', 'position_y', 'handler_id', 'step_type', 'child_flow_id', 'child_project_id', 'wait_mode' );
+    $t_fields = array( 'name', 'department', 'mantis_status', 'sla_hours', 'step_order', 'role', 'position_x', 'position_y', 'handler_id', 'step_type', 'child_flow_id', 'child_project_id', 'wait_mode', 'note_required', 'start_trigger', 'completion_criteria', 'completion_status' );
     foreach( $t_fields as $t_field ) {
         if( isset( $p_data[$t_field] ) ) {
             $t_sets[] = "$t_field = " . db_param();

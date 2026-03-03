@@ -389,3 +389,227 @@
 .pe-row-faded:hover {
     opacity: 0.8;
 }
+
+/* ---- Faz 11: Birleşik Zaman Çizelgesi ---- */
+.pe-timeline {
+    position: relative;
+    padding: 10px 0;
+}
+.pe-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #e0e0e0;
+}
+.pe-timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 12px;
+}
+.pe-timeline-icon {
+    position: absolute;
+    left: 10px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+.pe-timeline-icon .fa {
+    color: #fff;
+    font-size: 11px;
+}
+.pe-timeline-card {
+    background: #f9f9f9;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+.pe-timeline-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.pe-timeline-type {
+    font-weight: 600;
+    font-size: 12px;
+    color: #333;
+}
+.pe-timeline-label {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background-color: #3498db;
+}
+.pe-timeline-meta {
+    font-size: 11px;
+    color: #999;
+    margin-left: auto;
+}
+.pe-timeline-status {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 4px;
+}
+.pe-timeline-status .fa-arrow-right {
+    margin: 0 4px;
+    color: #999;
+    font-size: 10px;
+}
+.pe-timeline-step {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #555;
+    background-color: #eee;
+    margin-left: 6px;
+}
+.pe-timeline-note {
+    font-size: 12px;
+    color: #666;
+    padding-top: 2px;
+    border-top: 1px solid #eee;
+    margin-top: 4px;
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+/* ---- Faz 11: İlerleme Modalı ---- */
+.pe-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+}
+.pe-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 9999;
+    width: 500px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.pe-modal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e8e8e8;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.pe-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #999;
+    padding: 0 4px;
+}
+.pe-modal-body {
+    padding: 16px;
+}
+.pe-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #e8e8e8;
+    text-align: right;
+}
+.pe-modal-footer .btn {
+    margin-left: 6px;
+}
+.pe-modal-step-flow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.pe-modal-step-flow .fa-arrow-right {
+    color: #3498db;
+}
+.pe-modal-note-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 13px;
+}
+.pe-badge-required {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    background-color: #e74c3c;
+}
+.pe-modal-error {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 8px;
+    display: none;
+}
+
+/* ---- Faz 11: Subprocess Bilgi Paneli ---- */
+.pe-subprocess-action-panel {
+    margin-top: 10px;
+    padding: 12px;
+    background: #fef5e7;
+    border: 1px solid #f0c27a;
+    border-radius: 4px;
+}
+.pe-subprocess-action-panel h5 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e67e22;
+}
+.pe-subprocess-action-panel .pe-target-info {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 10px;
+}
+.pe-subprocess-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pe-subprocess-actions .pe-or-divider {
+    font-size: 12px;
+    color: #999;
+}
+.pe-subprocess-actions input[type="text"] {
+    width: 120px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+}

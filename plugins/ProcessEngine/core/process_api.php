@@ -15,7 +15,7 @@
  * @param int $p_new_status New status
  * @param string $p_note  Optional note
  */
-function process_log_status_change( $p_bug_id, $p_old_status, $p_new_status, $p_note = '' ) {
+function process_log_status_change( $p_bug_id, $p_old_status, $p_new_status, $p_note = '', $p_event_type = 'status_change', $p_transition_label = '' ) {
     if( !bug_exists( $p_bug_id ) ) {
         return;
     }
@@ -29,13 +29,19 @@ function process_log_status_change( $p_bug_id, $p_old_status, $p_new_status, $p_
     $t_step = process_find_step_by_status( $t_flow['id'], $p_new_status );
     $t_step_id = ( $t_step !== null ) ? $t_step['id'] : 0;
 
+    // Akış dışı geçişleri otomatik işaretle
+    if( $p_note === plugin_lang_get( 'out_of_flow_transition' ) ) {
+        $p_event_type = 'out_of_flow';
+    }
+
     $t_log_table = plugin_table( 'log' );
     db_param_push();
     $t_query = "INSERT INTO $t_log_table
-        ( bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at )
+        ( bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at, event_type, transition_label )
         VALUES
         ( " . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
-        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . " )";
+        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . " )";
 
     db_query( $t_query, array(
         (int) $p_bug_id,
@@ -46,6 +52,8 @@ function process_log_status_change( $p_bug_id, $p_old_status, $p_new_status, $p_
         (int) auth_get_current_user_id(),
         $p_note,
         time(),
+        $p_event_type,
+        $p_transition_label,
     ) );
 
     // Trigger custom event
@@ -169,13 +177,14 @@ function process_find_start_step( $p_flow_id ) {
  * @param int $p_flow_id Flow ID
  * @param array $p_step Start step data
  */
-function process_log_initial( $p_bug_id, $p_flow_id, $p_step ) {
+function process_log_initial( $p_bug_id, $p_flow_id, $p_step, $p_event_type = 'process_started' ) {
     $t_log_table = plugin_table( 'log' );
     db_param_push();
     $t_query = "INSERT INTO $t_log_table
-        ( bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at )
+        ( bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at, event_type, transition_label )
         VALUES ( " . db_param() . ", " . db_param() . ", " . db_param() . ", "
-        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . " )";
+        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . ", " . db_param() . " )";
     db_query( $t_query, array(
         (int) $p_bug_id,
         (int) $p_flow_id,
@@ -185,6 +194,8 @@ function process_log_initial( $p_bug_id, $p_flow_id, $p_step ) {
         (int) auth_get_current_user_id(),
         plugin_lang_get( 'process_started' ),
         time(),
+        $p_event_type,
+        '',
     ) );
 }
 
@@ -331,40 +342,61 @@ function process_get_tracked_bug_ids() {
 function process_get_dashboard_stats() {
     $t_log_table = plugin_table( 'log' );
     $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_bug_table = db_get_table( 'bug' );
     $t_today_start = mktime( 0, 0, 0 );
 
-    // Total unique bugs with process logs
-    $t_result = db_query( "SELECT COUNT(DISTINCT bug_id) AS cnt FROM $t_log_table" );
+    // Proje bazlı erişim kontrolü
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible_projects = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible_projects ) ) {
+        return array(
+            'total' => 0, 'active' => 0, 'sla_exceeded' => 0,
+            'avg_time' => 0, 'today' => 0, 'pending' => 0, 'waiting_subprocesses' => 0,
+        );
+    }
+    $t_project_ids = array_map( 'intval', $t_accessible_projects );
+    $t_project_in = implode( ',', $t_project_ids );
+
+    // Total unique bugs with process logs (proje filtreli)
+    $t_result = db_query( "SELECT COUNT(DISTINCT l.bug_id) AS cnt FROM $t_log_table l
+        INNER JOIN $t_bug_table b ON l.bug_id = b.id WHERE b.project_id IN ($t_project_in)" );
     $t_row = db_fetch_array( $t_result );
     $t_total = (int) $t_row['cnt'];
 
-    // Active SLA trackings (not completed)
-    $t_result = db_query( "SELECT COUNT(DISTINCT bug_id) AS cnt FROM $t_sla_table WHERE completed_at IS NULL" );
+    // Active SLA trackings (proje filtreli)
+    $t_result = db_query( "SELECT COUNT(DISTINCT st.bug_id) AS cnt FROM $t_sla_table st
+        INNER JOIN $t_bug_table b ON st.bug_id = b.id WHERE st.completed_at IS NULL AND b.project_id IN ($t_project_in)" );
     $t_row = db_fetch_array( $t_result );
     $t_active = (int) $t_row['cnt'];
 
-    // SLA exceeded
-    $t_result = db_query( "SELECT COUNT(*) AS cnt FROM $t_sla_table WHERE sla_status = 'EXCEEDED' AND completed_at IS NULL" );
+    // SLA exceeded (proje filtreli)
+    $t_result = db_query( "SELECT COUNT(*) AS cnt FROM $t_sla_table st
+        INNER JOIN $t_bug_table b ON st.bug_id = b.id WHERE st.sla_status = 'EXCEEDED' AND st.completed_at IS NULL AND b.project_id IN ($t_project_in)" );
     $t_row = db_fetch_array( $t_result );
     $t_sla_exceeded = (int) $t_row['cnt'];
 
-    // Average resolution time (completed SLA entries)
-    $t_result = db_query( "SELECT AVG(completed_at - started_at) AS avg_time FROM $t_sla_table WHERE completed_at IS NOT NULL AND completed_at > 0" );
+    // Average resolution time (proje filtreli)
+    $t_result = db_query( "SELECT AVG(st.completed_at - st.started_at) AS avg_time FROM $t_sla_table st
+        INNER JOIN $t_bug_table b ON st.bug_id = b.id WHERE st.completed_at IS NOT NULL AND st.completed_at > 0 AND b.project_id IN ($t_project_in)" );
     $t_row = db_fetch_array( $t_result );
     $t_avg_time = $t_row['avg_time'] ? round( (float) $t_row['avg_time'] / 3600, 1 ) : 0;
 
-    // Updated today
+    // Updated today (proje filtreli)
     db_param_push();
-    $t_result = db_query( "SELECT COUNT(DISTINCT bug_id) AS cnt FROM $t_log_table WHERE created_at >= " . db_param(), array( $t_today_start ) );
+    $t_result = db_query( "SELECT COUNT(DISTINCT l.bug_id) AS cnt FROM $t_log_table l
+        INNER JOIN $t_bug_table b ON l.bug_id = b.id WHERE l.created_at >= " . db_param() . " AND b.project_id IN ($t_project_in)", array( $t_today_start ) );
     $t_row = db_fetch_array( $t_result );
     $t_today = (int) $t_row['cnt'];
 
-    // Pending (bugs at a step that has transitions but hasn't moved forward yet)
-    // Simple approach: bugs with latest log where status is not resolved/closed
+    // Pending (proje filtreli)
     $t_pending = 0;
     $t_bug_ids = process_get_tracked_bug_ids();
     foreach( $t_bug_ids as $t_bug_id ) {
         if( bug_exists( $t_bug_id ) ) {
+            $t_project = bug_get_field( $t_bug_id, 'project_id' );
+            if( !in_array( (int) $t_project, $t_project_ids ) ) {
+                continue;
+            }
             $t_status = bug_get_field( $t_bug_id, 'status' );
             if( $t_status < config_get( 'bug_resolved_status_threshold' ) ) {
                 $t_pending++;
@@ -372,9 +404,10 @@ function process_get_dashboard_stats() {
         }
     }
 
-    // Bekleyen alt süreçler (WAITING durumundaki ebeveynler)
+    // Bekleyen alt süreçler (proje filtreli)
     $t_inst_table = plugin_table( 'process_instance' );
-    $t_result = db_query( "SELECT COUNT(*) AS cnt FROM $t_inst_table WHERE status = 'WAITING'" );
+    $t_result = db_query( "SELECT COUNT(*) AS cnt FROM $t_inst_table pi
+        INNER JOIN $t_bug_table b ON pi.bug_id = b.id WHERE pi.status = 'WAITING' AND b.project_id IN ($t_project_in)" );
     $t_row = db_fetch_array( $t_result );
     $t_waiting_subprocesses = (int) $t_row['cnt'];
 
@@ -442,6 +475,133 @@ function process_get_instance( $p_bug_id ) {
     $t_result = db_query( $t_query, array( (int) $p_bug_id ) );
     $t_row = db_fetch_array( $t_result );
     return ( $t_row !== false ) ? $t_row : null;
+}
+
+// ============================================================
+// Faz 11: Birleşik Aktivite Zaman Çizelgesi
+// ============================================================
+
+/**
+ * Get a unified timeline combining process logs and bugnotes for a bug.
+ * Returns events sorted by creation time ascending.
+ *
+ * @param int $p_bug_id Bug ID
+ * @return array Array of timeline events
+ */
+function process_get_unified_timeline( $p_bug_id ) {
+    $t_log_table = plugin_table( 'log' );
+    $t_step_table = plugin_table( 'step' );
+    $t_bugnote_table = db_get_table( 'bugnote' );
+    $t_bugnote_text_table = db_get_table( 'bugnote_text' );
+
+    $t_events = array();
+
+    // Kaynak 1: Süreç logları
+    db_param_push();
+    $t_query = "SELECT l.*, COALESCE(s.name, '') AS step_name
+        FROM $t_log_table l
+        LEFT JOIN $t_step_table s ON l.step_id = s.id
+        WHERE l.bug_id = " . db_param() . "
+        ORDER BY l.created_at ASC";
+    $t_result = db_query( $t_query, array( (int) $p_bug_id ) );
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_event_type = isset( $t_row['event_type'] ) ? $t_row['event_type'] : 'status_change';
+        $t_events[] = array(
+            'source'           => 'process_log',
+            'event_type'       => $t_event_type,
+            'created_at'       => (int) $t_row['created_at'],
+            'user_id'          => (int) $t_row['user_id'],
+            'step_name'        => $t_row['step_name'],
+            'from_status'      => (int) $t_row['from_status'],
+            'to_status'        => (int) $t_row['to_status'],
+            'note'             => $t_row['note'],
+            'transition_label' => isset( $t_row['transition_label'] ) ? $t_row['transition_label'] : '',
+        );
+    }
+
+    // Kaynak 2: MantisBT bugnote'ları
+    $t_manage_threshold = plugin_config_get( 'manage_threshold' );
+    $t_current_user_id = auth_get_current_user_id();
+    $t_user_access = access_get_global_level();
+
+    db_param_push();
+    $t_query = "SELECT bn.id, bn.reporter_id, bn.view_state, bn.date_submitted,
+            bnt.note AS bugnote_text
+        FROM $t_bugnote_table bn
+        LEFT JOIN $t_bugnote_text_table bnt ON bn.bugnote_text_id = bnt.id
+        WHERE bn.bug_id = " . db_param() . "
+        ORDER BY bn.date_submitted ASC";
+    $t_result = db_query( $t_query, array( (int) $p_bug_id ) );
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        // Private bugnote filtreleme
+        if( (int) $t_row['view_state'] === VS_PRIVATE ) {
+            if( $t_user_access < $t_manage_threshold && (int) $t_row['reporter_id'] !== $t_current_user_id ) {
+                continue;
+            }
+        }
+        $t_events[] = array(
+            'source'           => 'bugnote',
+            'event_type'       => 'note_added',
+            'created_at'       => (int) $t_row['date_submitted'],
+            'user_id'          => (int) $t_row['reporter_id'],
+            'step_name'        => '',
+            'from_status'      => 0,
+            'to_status'        => 0,
+            'note'             => $t_row['bugnote_text'],
+            'transition_label' => '',
+        );
+    }
+
+    // Zamana göre sırala
+    usort( $t_events, function( $a, $b ) {
+        return $a['created_at'] - $b['created_at'];
+    });
+
+    return $t_events;
+}
+
+/**
+ * Check if step exit conditions are met before advancing.
+ *
+ * @param int $p_bug_id Bug ID
+ * @param array $p_step Current step data
+ * @return array ['can_advance' => bool, 'reason' => string]
+ */
+function process_check_step_exit_conditions( $p_bug_id, $p_step ) {
+    $t_criteria = isset( $p_step['completion_criteria'] ) ? $p_step['completion_criteria'] : 'manual';
+
+    switch( $t_criteria ) {
+        case 'on_status':
+            $t_target = isset( $p_step['completion_status'] ) ? (int) $p_step['completion_status'] : 0;
+            if( $t_target > 0 ) {
+                $t_current = (int) bug_get_field( $p_bug_id, 'status' );
+                if( $t_current !== $t_target ) {
+                    $t_target_label = get_enum_element( 'status', $t_target );
+                    return array(
+                        'can_advance' => false,
+                        'reason'      => sprintf( plugin_lang_get( 'exit_condition_status_required' ), $t_target_label ),
+                    );
+                }
+            }
+            break;
+
+        case 'on_resolve':
+            $t_resolved = config_get( 'bug_resolved_status_threshold' );
+            $t_current = (int) bug_get_field( $p_bug_id, 'status' );
+            if( $t_current < $t_resolved ) {
+                return array(
+                    'can_advance' => false,
+                    'reason'      => plugin_lang_get( 'exit_condition_resolve_required' ),
+                );
+            }
+            break;
+
+        case 'manual':
+        default:
+            break;
+    }
+
+    return array( 'can_advance' => true, 'reason' => '' );
 }
 
 // ============================================================
@@ -538,8 +698,20 @@ function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '' ) {
     $t_log_table = plugin_table( 'log' );
     $t_step_table = plugin_table( 'step' );
     $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_bug_table = db_get_table( 'bug' );
 
-    // Get latest log entry per bug
+    // Proje bazlı erişim kontrolü: kullanıcının erişebildiği projeler
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible_projects = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible_projects ) ) {
+        return array();
+    }
+
+    // Erişilebilir proje ID'lerini SQL IN listesi olarak hazırla
+    $t_project_ids = array_map( 'intval', $t_accessible_projects );
+    $t_project_in = implode( ',', $t_project_ids );
+
+    // Get latest log entry per bug — proje filtreli
     $t_query = "SELECT l.bug_id, l.flow_id, l.step_id, l.to_status, l.created_at,
             COALESCE(s.name, '') AS step_name,
             COALESCE(s.department, '') AS department
@@ -547,15 +719,24 @@ function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '' ) {
         INNER JOIN (
             SELECT bug_id, MAX(id) AS max_id FROM $t_log_table GROUP BY bug_id
         ) latest ON l.id = latest.max_id
+        INNER JOIN $t_bug_table b ON l.bug_id = b.id
         LEFT JOIN $t_step_table s ON l.step_id = s.id
+        WHERE b.project_id IN ($t_project_in)
         ORDER BY l.created_at DESC";
 
     $t_result = db_query( $t_query );
     $t_bugs = array();
 
+    $t_view_threshold = plugin_config_get( 'view_threshold' );
+
     while( $t_row = db_fetch_array( $t_result ) ) {
         $t_bug_id = (int) $t_row['bug_id'];
         if( !bug_exists( $t_bug_id ) ) {
+            continue;
+        }
+
+        // Bug seviyesinde ek erişim kontrolü
+        if( !access_has_bug_level( $t_view_threshold, $t_bug_id ) ) {
             continue;
         }
 

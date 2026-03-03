@@ -32,26 +32,109 @@
     }
 
     function initBugViewActions() {
+        // İlerleme modalı ile adım ilerletme
         document.querySelectorAll('.pe-bugview-advance').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 var bugId = this.getAttribute('data-bug-id');
-                var isSubprocess = this.getAttribute('data-is-subprocess') === '1';
+                var noteRequired = this.getAttribute('data-note-required') === '1';
+                var currentStep = this.getAttribute('data-current-step') || '';
+                var nextStep = this.getAttribute('data-next-step') || '';
 
-                var confirmMsg = isSubprocess
-                    ? document.querySelector('.pe-bugview-advance') && 'Bu işlem alt süreç oluşturacak. Devam etmek istiyor musunuz?'
-                    : 'Bu sorunu sonraki adıma ilerletmek istediğinize emin misiniz?';
+                peOpenAdvanceModal(bugId, noteRequired, currentStep, nextStep);
+            });
+        });
 
-                if (!confirm(confirmMsg)) {
+        // Subprocess oluşturma
+        document.querySelectorAll('.pe-create-subprocess').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var bugId = this.getAttribute('data-bug-id');
+                peDoBugViewAction('create_subprocess', bugId, this, {});
+            });
+        });
+
+        // Manuel çocuk bağlama
+        document.querySelectorAll('.pe-link-child-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var bugId = this.getAttribute('data-bug-id');
+                var input = document.querySelector('.pe-link-child-input[data-bug-id="' + bugId + '"]');
+                var childBugId = input ? input.value.replace('#', '').trim() : '';
+                if (!childBugId || isNaN(childBugId)) {
+                    alert('Geçerli bir talep numarası girin.');
                     return;
                 }
-
-                peDoBugViewAction('advance_step', bugId, this);
+                peDoBugViewAction('link_manual_child', bugId, this, { child_bug_id: childBugId });
             });
         });
     }
 
-    function peDoBugViewAction(action, bugId, btnEl) {
+    function peOpenAdvanceModal(bugId, noteRequired, currentStep, nextStep) {
+        var overlay = document.getElementById('pe-advance-overlay');
+        var modal = document.getElementById('pe-advance-modal');
+        if (!overlay || !modal) return;
+
+        // Modal alanlarını doldur
+        var currentEl = document.getElementById('pe-modal-current-step');
+        var nextEl = document.getElementById('pe-modal-next-step');
+        var requiredBadge = document.getElementById('pe-modal-required-badge');
+        var noteArea = document.getElementById('pe-modal-note');
+        var errorEl = document.getElementById('pe-modal-error');
+
+        if (currentEl) currentEl.textContent = currentStep;
+        if (nextEl) nextEl.textContent = nextStep;
+        if (requiredBadge) requiredBadge.style.display = noteRequired ? 'inline-block' : 'none';
+        if (noteArea) noteArea.value = '';
+        if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
+
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
+
+        // Onay butonu
+        var confirmBtn = document.getElementById('pe-modal-confirm');
+        var cancelBtn = document.getElementById('pe-modal-cancel');
+        var closeBtn = document.getElementById('pe-modal-close');
+
+        function closeModal() {
+            overlay.style.display = 'none';
+            modal.style.display = 'none';
+        }
+
+        function onConfirm() {
+            var note = noteArea ? noteArea.value.trim() : '';
+            if (noteRequired && note === '') {
+                if (errorEl) {
+                    errorEl.textContent = 'Not alanı zorunludur.';
+                    errorEl.style.display = 'block';
+                }
+                return;
+            }
+            closeModal();
+            // İlerletme aksiyonunu çalıştır
+            var advanceBtn = document.querySelector('.pe-bugview-advance[data-bug-id="' + bugId + '"]');
+            if (advanceBtn) {
+                peDoBugViewAction('advance_step', bugId, advanceBtn, { note: note });
+            }
+        }
+
+        // Eski dinleyicileri temizle (clone ile)
+        var newConfirm = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+        newConfirm.addEventListener('click', onConfirm);
+
+        var newCancel = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+        newCancel.addEventListener('click', closeModal);
+
+        var newClose = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newClose, closeBtn);
+        newClose.addEventListener('click', closeModal);
+
+        overlay.addEventListener('click', closeModal);
+    }
+
+    function peDoBugViewAction(action, bugId, btnEl, extraData) {
         var urlEl = document.getElementById('pe-bugview-action-url');
         var tokenEl = document.getElementById('pe-bugview-token');
         if (!urlEl || !tokenEl) return;
@@ -67,6 +150,14 @@
         formData.append('action', action);
         formData.append('bug_id', bugId);
         formData.append('ProcessEngine_dashboard_action_token', token);
+
+        if (extraData) {
+            for (var key in extraData) {
+                if (extraData.hasOwnProperty(key)) {
+                    formData.append(key, extraData[key]);
+                }
+            }
+        }
 
         var xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
@@ -180,8 +271,10 @@
         if (document.getElementById('pe-action-url')) {
             initDashboard();
         }
-        // Bug view sayfasındaki advance butonu varsa onu başlat
-        if (document.querySelector('.pe-bugview-advance')) {
+        // Bug view sayfasındaki ilerleme/subprocess butonları varsa başlat
+        if (document.querySelector('.pe-bugview-advance') ||
+            document.querySelector('.pe-create-subprocess') ||
+            document.querySelector('.pe-link-child-btn')) {
             initBugViewActions();
         }
     }

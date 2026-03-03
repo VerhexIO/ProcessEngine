@@ -247,3 +247,50 @@ $s_plugin_ProcessEngine_subprocess_waiting = 'Alt Süreç Bekleniyor';
 $s_plugin_ProcessEngine_advance_confirm_subprocess = 'Bu işlem alt süreç oluşturacak. Devam etmek istiyor musunuz?';
 $s_plugin_ProcessEngine_manual_link_success = 'Süreç bağlantısı oluşturuldu';
 $s_plugin_ProcessEngine_manual_link_not_subprocess = 'Ebeveyn sorunun mevcut adımı alt süreç adımı değil';
+
+# Faz 11: Süreç Motoru Paradigma Değişikliği
+
+# Olay tipleri (zaman çizelgesi)
+$s_plugin_ProcessEngine_event_type_process_started = 'Süreç Başlatıldı';
+$s_plugin_ProcessEngine_event_type_status_change = 'Durum Değişikliği';
+$s_plugin_ProcessEngine_event_type_step_advanced = 'Adım İlerletildi';
+$s_plugin_ProcessEngine_event_type_subprocess_created = 'Alt Süreç Oluşturuldu';
+$s_plugin_ProcessEngine_event_type_subprocess_completed = 'Alt Süreç Tamamlandı';
+$s_plugin_ProcessEngine_event_type_parent_advanced = 'Ebeveyn Süreç İlerletildi';
+$s_plugin_ProcessEngine_event_type_out_of_flow = 'Akış Dışı Geçiş';
+$s_plugin_ProcessEngine_event_type_note_added = 'Not Eklendi';
+
+# Yarı-manuel subprocess
+$s_plugin_ProcessEngine_subprocess_needs_child = 'Bu adım için alt süreç oluşturulması gerekiyor';
+$s_plugin_ProcessEngine_btn_create_subprocess = 'Şimdi Aç';
+$s_plugin_ProcessEngine_or = 'veya';
+$s_plugin_ProcessEngine_link_child_placeholder = 'Talep No: #123';
+$s_plugin_ProcessEngine_btn_link_child = 'Bağla';
+$s_plugin_ProcessEngine_subprocess_already_exists = 'Bu adımda zaten aktif bir alt süreç bulunuyor.';
+$s_plugin_ProcessEngine_subprocess_created_note = 'Alt süreç oluşturuldu: #%d';
+$s_plugin_ProcessEngine_subprocess_created_success = 'Alt süreç başarıyla oluşturuldu.';
+$s_plugin_ProcessEngine_subprocess_linked_note = 'Alt süreç bağlandı: #%d';
+
+# İlerleme modalı
+$s_plugin_ProcessEngine_modal_advance_title = 'Adımı İlerlet';
+$s_plugin_ProcessEngine_modal_note_label = 'Not (Açıklama)';
+$s_plugin_ProcessEngine_required = 'Zorunlu';
+$s_plugin_ProcessEngine_modal_note_placeholder = 'Bu adımla ilgili açıklama veya not yazın...';
+$s_plugin_ProcessEngine_note_required_error = 'Not alanı zorunludur. Lütfen bir açıklama girin.';
+
+# Çıkış koşulları
+$s_plugin_ProcessEngine_exit_condition_status_required = 'İlerletmek için sorunun durumu "%s" olmalıdır.';
+$s_plugin_ProcessEngine_exit_condition_resolve_required = 'İlerletmek için sorunun çözülmüş durumda olması gerekir.';
+
+# Akış tasarımcısı — adım yaşam döngüsü
+$s_plugin_ProcessEngine_start_trigger = 'Başlangıç Tetikleyicisi';
+$s_plugin_ProcessEngine_start_trigger_auto = 'Otomatik';
+$s_plugin_ProcessEngine_start_trigger_on_assign = 'Atamada';
+$s_plugin_ProcessEngine_start_trigger_manual = 'Manuel';
+$s_plugin_ProcessEngine_start_trigger_on_create = 'Oluşturmada';
+$s_plugin_ProcessEngine_completion_criteria = 'Tamamlanma Kriteri';
+$s_plugin_ProcessEngine_completion_manual = 'Manuel';
+$s_plugin_ProcessEngine_completion_on_status = 'Duruma Göre';
+$s_plugin_ProcessEngine_completion_on_resolve = 'Çözümde';
+$s_plugin_ProcessEngine_completion_status = 'Hedef Durum';
+$s_plugin_ProcessEngine_note_required_label = 'Not Zorunlu';

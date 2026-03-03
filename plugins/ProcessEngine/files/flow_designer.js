@@ -88,7 +88,11 @@
             step_type: s.step_type || 'normal',
             child_flow_id: parseInt(s.child_flow_id) || 0,
             child_project_id: parseInt(s.child_project_id) || 0,
-            wait_mode: s.wait_mode || 'all'
+            wait_mode: s.wait_mode || 'all',
+            note_required: parseInt(s.note_required) || 0,
+            start_trigger: s.start_trigger || 'auto',
+            completion_criteria: s.completion_criteria || 'manual',
+            completion_status: parseInt(s.completion_status) || 0
         };
     }
 
@@ -467,6 +471,15 @@
             });
         }
 
+        // Bitiş kriteri değişince hedef durum alanını göster/gizle
+        var completionCriteriaSelect = document.getElementById('pe-modal-completion-criteria');
+        var completionStatusGroup = document.getElementById('pe-completion-status-group');
+        if (completionCriteriaSelect && completionStatusGroup) {
+            completionCriteriaSelect.addEventListener('change', function() {
+                completionStatusGroup.style.display = (this.value === 'on_status') ? 'block' : 'none';
+            });
+        }
+
         if (saveBtn) {
             saveBtn.addEventListener('click', function() {
                 var id = document.getElementById('pe-modal-step-id').value;
@@ -494,6 +507,21 @@
                         step.child_project_id = 0;
                         step.wait_mode = 'all';
                     }
+
+                    // Adım yaşam döngüsü alanları
+                    var startTriggerEl = document.getElementById('pe-modal-start-trigger');
+                    step.start_trigger = startTriggerEl ? startTriggerEl.value : 'auto';
+
+                    var completionCriteriaEl = document.getElementById('pe-modal-completion-criteria');
+                    step.completion_criteria = completionCriteriaEl ? completionCriteriaEl.value : 'manual';
+
+                    var completionStatusEl = document.getElementById('pe-modal-completion-status');
+                    step.completion_status = (step.completion_criteria === 'on_status')
+                        ? (parseInt(completionStatusEl ? completionStatusEl.value : 0) || 0)
+                        : 0;
+
+                    var noteRequiredEl = document.getElementById('pe-modal-note-required');
+                    step.note_required = (noteRequiredEl && noteRequiredEl.checked) ? 1 : 0;
 
                     isDirty = true;
                     render();
@@ -561,6 +589,23 @@
         if (childProjectEl) childProjectEl.value = step.child_project_id || 0;
         var waitModeEl = document.getElementById('pe-modal-wait-mode');
         if (waitModeEl) waitModeEl.value = step.wait_mode || 'all';
+
+        // Adım yaşam döngüsü alanları
+        var startTriggerEl = document.getElementById('pe-modal-start-trigger');
+        if (startTriggerEl) startTriggerEl.value = step.start_trigger || 'auto';
+
+        var completionCriteriaEl = document.getElementById('pe-modal-completion-criteria');
+        if (completionCriteriaEl) completionCriteriaEl.value = step.completion_criteria || 'manual';
+
+        var completionStatusEl = document.getElementById('pe-modal-completion-status');
+        var completionStatusGroup = document.getElementById('pe-completion-status-group');
+        if (completionStatusEl) completionStatusEl.value = step.completion_status || 0;
+        if (completionStatusGroup) {
+            completionStatusGroup.style.display = (step.completion_criteria === 'on_status') ? 'block' : 'none';
+        }
+
+        var noteRequiredEl = document.getElementById('pe-modal-note-required');
+        if (noteRequiredEl) noteRequiredEl.checked = (parseInt(step.note_required) === 1);
 
         $('#pe-step-modal').modal('show');
     }
@@ -652,7 +697,11 @@
                 step_type: 'normal',
                 child_flow_id: 0,
                 child_project_id: 0,
-                wait_mode: 'all'
+                wait_mode: 'all',
+                note_required: 0,
+                start_trigger: 'auto',
+                completion_criteria: 'manual',
+                completion_status: 0
             });
             selectedNodeId = id;
             render();
@@ -691,7 +740,11 @@
                     step_type: s.step_type,
                     child_flow_id: s.child_flow_id,
                     child_project_id: s.child_project_id,
-                    wait_mode: s.wait_mode
+                    wait_mode: s.wait_mode,
+                    note_required: s.note_required,
+                    start_trigger: s.start_trigger,
+                    completion_criteria: s.completion_criteria,
+                    completion_status: s.completion_status
                 };
             }),
             transitions: transitions.map(function(t) {

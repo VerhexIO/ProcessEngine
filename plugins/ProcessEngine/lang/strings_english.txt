@@ -247,3 +247,50 @@ $s_plugin_ProcessEngine_subprocess_waiting = 'Waiting for Subprocess';
 $s_plugin_ProcessEngine_advance_confirm_subprocess = 'This will create a subprocess. Continue?';
 $s_plugin_ProcessEngine_manual_link_success = 'Process link created';
 $s_plugin_ProcessEngine_manual_link_not_subprocess = 'Parent issue current step is not a subprocess step';
+
+# Phase 11: Process Engine Paradigm Shift
+
+# Event types (timeline)
+$s_plugin_ProcessEngine_event_type_process_started = 'Process Started';
+$s_plugin_ProcessEngine_event_type_status_change = 'Status Change';
+$s_plugin_ProcessEngine_event_type_step_advanced = 'Step Advanced';
+$s_plugin_ProcessEngine_event_type_subprocess_created = 'Subprocess Created';
+$s_plugin_ProcessEngine_event_type_subprocess_completed = 'Subprocess Completed';
+$s_plugin_ProcessEngine_event_type_parent_advanced = 'Parent Process Advanced';
+$s_plugin_ProcessEngine_event_type_out_of_flow = 'Out-of-Flow Transition';
+$s_plugin_ProcessEngine_event_type_note_added = 'Note Added';
+
+# Semi-manual subprocess
+$s_plugin_ProcessEngine_subprocess_needs_child = 'A subprocess needs to be created for this step';
+$s_plugin_ProcessEngine_btn_create_subprocess = 'Create Now';
+$s_plugin_ProcessEngine_or = 'or';
+$s_plugin_ProcessEngine_link_child_placeholder = 'Request No: #123';
+$s_plugin_ProcessEngine_btn_link_child = 'Link';
+$s_plugin_ProcessEngine_subprocess_already_exists = 'An active subprocess already exists for this step.';
+$s_plugin_ProcessEngine_subprocess_created_note = 'Subprocess created: #%d';
+$s_plugin_ProcessEngine_subprocess_created_success = 'Subprocess created successfully.';
+$s_plugin_ProcessEngine_subprocess_linked_note = 'Subprocess linked: #%d';
+
+# Advance modal
+$s_plugin_ProcessEngine_modal_advance_title = 'Advance Step';
+$s_plugin_ProcessEngine_modal_note_label = 'Note (Description)';
+$s_plugin_ProcessEngine_required = 'Required';
+$s_plugin_ProcessEngine_modal_note_placeholder = 'Write a description or note about this step...';
+$s_plugin_ProcessEngine_note_required_error = 'Note field is required. Please provide a description.';
+
+# Exit conditions
+$s_plugin_ProcessEngine_exit_condition_status_required = 'Issue status must be "%s" to advance.';
+$s_plugin_ProcessEngine_exit_condition_resolve_required = 'Issue must be in resolved status to advance.';
+
+# Flow designer — step lifecycle
+$s_plugin_ProcessEngine_start_trigger = 'Start Trigger';
+$s_plugin_ProcessEngine_start_trigger_auto = 'Automatic';
+$s_plugin_ProcessEngine_start_trigger_on_assign = 'On Assign';
+$s_plugin_ProcessEngine_start_trigger_manual = 'Manual';
+$s_plugin_ProcessEngine_start_trigger_on_create = 'On Create';
+$s_plugin_ProcessEngine_completion_criteria = 'Completion Criteria';
+$s_plugin_ProcessEngine_completion_manual = 'Manual';
+$s_plugin_ProcessEngine_completion_on_status = 'On Status';
+$s_plugin_ProcessEngine_completion_on_resolve = 'On Resolve';
+$s_plugin_ProcessEngine_completion_status = 'Target Status';
+$s_plugin_ProcessEngine_note_required_label = 'Note Required';

@@ -716,9 +716,10 @@ function subprocess_advance_parent( $p_parent_inst_id, $p_parent_step_id, $p_dep
             $t_log_table = plugin_table( 'log' );
             db_param_push();
             db_query(
-                "INSERT INTO $t_log_table (bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at)
+                "INSERT INTO $t_log_table (bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at, event_type, transition_label)
                  VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
-                . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
+                . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+                . db_param() . ", " . db_param() . ")",
                 array(
                     $t_parent_bug_id,
                     $t_flow_id,
@@ -728,27 +729,14 @@ function subprocess_advance_parent( $p_parent_inst_id, $p_parent_step_id, $p_dep
                     $t_user_id,
                     'Alt süreç tamamlandı, sonraki adıma geçildi',
                     time(),
+                    'parent_advanced',
+                    '',
                 )
             );
         }
 
-        // Sonraki adım subprocess ise yeni çocuk oluştur
-        if( isset( $t_next_step['step_type'] ) && $t_next_step['step_type'] === 'subprocess'
-            && isset( $t_next_step['child_flow_id'] ) && (int) $t_next_step['child_flow_id'] > 0
-        ) {
-            $t_child_project = isset( $t_next_step['child_project_id'] ) ? (int) $t_next_step['child_project_id'] : 0;
-            if( $t_child_project <= 0 ) {
-                $t_child_project = bug_get_field( $t_parent_bug_id, 'project_id' );
-            }
-            require_once( __DIR__ . '/subprocess_api.php' );
-            subprocess_create_child_issue(
-                $t_parent_bug_id,
-                (int) $t_next_step['child_flow_id'],
-                $t_child_project,
-                $p_parent_inst_id,
-                $t_next_step_id
-            );
-        }
+        // Faz 11: Sonraki adım subprocess ise otomatik çocuk oluşturma YAPILMAZ.
+        // Kullanıcı manuel olarak oluşturacak.
 
         // Otomatik sorumlu atama
         if( isset( $t_next_step['handler_id'] ) && (int) $t_next_step['handler_id'] > 0

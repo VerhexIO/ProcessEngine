@@ -260,6 +260,42 @@ class ProcessEnginePlugin extends MantisPlugin {
             array( 'idx_pe_inst_status', plugin_table( 'process_instance' ), 'status' )
         );
 
+        // 20: Add event_type column to log table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'log' ), "event_type C(32) DEFAULT 'status_change'" )
+        );
+
+        // 21: Add transition_label column to log table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'log' ), "transition_label C(128) DEFAULT ''" )
+        );
+
+        // 22: Add note_required column to step table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'step' ), "note_required I2 NOTNULL DEFAULT '0'" )
+        );
+
+        // 23: Add start_trigger column to step table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'step' ), "start_trigger C(32) NOTNULL DEFAULT 'auto'" )
+        );
+
+        // 24: Add completion_criteria column to step table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'step' ), "completion_criteria C(32) NOTNULL DEFAULT 'manual'" )
+        );
+
+        // 25: Add completion_status column to step table
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'step' ), "completion_status I2 NOTNULL DEFAULT '0'" )
+        );
+
         return $t_schema;
     }
 
@@ -311,14 +347,8 @@ class ProcessEnginePlugin extends MantisPlugin {
             $p_bug_data->handler_id = (int) $t_step['handler_id'];
         }
 
-        // Başlangıç adımı subprocess ise çocuk oluştur (ertelenmiş)
-        if( isset( $t_step['step_type'] ) && $t_step['step_type'] === 'subprocess' ) {
-            $t_step_data = $t_step;
-            register_shutdown_function( function() use ( $p_bug_id, $t_step_data, $t_inst_id ) {
-                require_once( __DIR__ . '/core/subprocess_api.php' );
-                subprocess_handle_step( $p_bug_id, $t_step_data, $t_inst_id );
-            });
-        }
+        // Faz 11: Başlangıç adımı subprocess ise otomatik oluşturma YAPILMAZ.
+        // Kullanıcı dashboard veya bug view üzerinden manuel olarak oluşturmalıdır.
 
         return $p_bug_data;
     }
@@ -375,10 +405,8 @@ class ProcessEnginePlugin extends MantisPlugin {
                         $t_inst_id = (int) $t_inst['id'];
                         subprocess_update_current_step( $t_inst_id, $t_step_id );
 
-                        // Subprocess adımı mı? Çocuk sorun oluştur
-                        if( isset( $t_step_data['step_type'] ) && $t_step_data['step_type'] === 'subprocess' ) {
-                            subprocess_handle_step( $t_bug_id, $t_step_data, $t_inst_id );
-                        }
+                        // Faz 11: Subprocess adımına gelindiğinde otomatik çocuk oluşturma YAPILMAZ.
+                        // Kullanıcı manuel olarak "Şimdi Aç" butonuyla oluşturacak.
 
                         // Bitiş adımı kontrolü: bu adımdan çıkan geçiş var mı?
                         subprocess_check_and_complete( $t_bug_id, $t_flow_id, $t_step_id );
@@ -578,8 +606,9 @@ class ProcessEnginePlugin extends MantisPlugin {
         // 3. Ebeveyn/Çocuk Süreç Paneli
         $this->render_subprocess_panel( $p_bug_id );
 
-        // 4. Süreç Zaman Çizelgesi
-        $this->render_process_timeline( $t_logs );
+        // 4. Birleşik Süreç Zaman Çizelgesi
+        $t_timeline = process_get_unified_timeline( $p_bug_id );
+        $this->render_process_timeline( $t_timeline );
     }
 
     /**
@@ -634,15 +663,44 @@ class ProcessEnginePlugin extends MantisPlugin {
 
         // Mevcut adım subprocess mi?
         $t_current_is_subprocess = false;
+        $t_current_step_data = null;
         if( $p_instance !== null && (int) $p_instance['current_step_id'] > 0 ) {
             $t_cs_table = plugin_table( 'step' );
             db_param_push();
-            $t_cs_r = db_query( "SELECT step_type FROM $t_cs_table WHERE id = " . db_param(), array( (int) $p_instance['current_step_id'] ) );
+            $t_cs_r = db_query( "SELECT * FROM $t_cs_table WHERE id = " . db_param(), array( (int) $p_instance['current_step_id'] ) );
             $t_cs_row = db_fetch_array( $t_cs_r );
-            if( $t_cs_row !== false && isset( $t_cs_row['step_type'] ) && $t_cs_row['step_type'] === 'subprocess' ) {
-                $t_current_is_subprocess = true;
+            if( $t_cs_row !== false ) {
+                $t_current_step_data = $t_cs_row;
+                if( isset( $t_cs_row['step_type'] ) && $t_cs_row['step_type'] === 'subprocess' ) {
+                    $t_current_is_subprocess = true;
+                }
             }
         }
+
+        // Subprocess adımında çocuk var mı kontrol et (yarı-manuel)
+        $t_subprocess_needs_child = false;
+        $t_subprocess_target_project = '';
+        if( $t_current_is_subprocess && $p_instance !== null ) {
+            require_once( __DIR__ . '/core/subprocess_api.php' );
+            $t_sp_children = subprocess_get_children( (int) $p_instance['id'], (int) $p_instance['current_step_id'] );
+            if( empty( $t_sp_children ) ) {
+                $t_subprocess_needs_child = true;
+                // "Adımı İlerlet" butonunu gizle — önce çocuk oluşturulmalı
+                $t_show_advance = false;
+                // Hedef proje adını bul
+                $t_sp_project_id = isset( $t_current_step_data['child_project_id'] ) ? (int) $t_current_step_data['child_project_id'] : 0;
+                if( $t_sp_project_id > 0 && project_exists( $t_sp_project_id ) ) {
+                    $t_subprocess_target_project = project_get_name( $t_sp_project_id );
+                } else {
+                    $t_subprocess_target_project = project_get_name( bug_get_field( $p_bug_id, 'project_id' ) );
+                }
+            }
+        }
+
+        // Not zorunluluğu bilgisi
+        $t_note_required = ( $t_current_step_data !== null && isset( $t_current_step_data['note_required'] ) && (int) $t_current_step_data['note_required'] === 1 );
+        $t_current_step_name_for_modal = $t_current_step ? $t_current_step['name'] : '';
+        $t_next_step_name_for_modal = ( $p_next_step !== null ) ? $p_next_step['name'] : '';
 ?>
 <div class="col-md-12 col-xs-12">
     <div class="space-10"></div>
@@ -691,11 +749,33 @@ class ProcessEnginePlugin extends MantisPlugin {
                     <?php } ?>
                 </div>
                 <?php } ?>
+                <?php if( $t_subprocess_needs_child && $t_can_action ) { ?>
+                <div class="pe-subprocess-action-panel">
+                    <h5><i class="fa fa-exclamation-triangle"></i> <?php echo plugin_lang_get( 'subprocess_needs_child' ); ?></h5>
+                    <div class="pe-target-info">
+                        <?php echo plugin_lang_get( 'child_project' ); ?>: <strong><?php echo string_display_line( $t_subprocess_target_project ); ?></strong>
+                    </div>
+                    <div class="pe-subprocess-actions">
+                        <button class="btn btn-sm btn-warning pe-create-subprocess"
+                                data-bug-id="<?php echo (int) $p_bug_id; ?>">
+                            <i class="fa fa-plus-circle"></i> <?php echo plugin_lang_get( 'btn_create_subprocess' ); ?>
+                        </button>
+                        <span class="pe-or-divider"><?php echo plugin_lang_get( 'or' ); ?></span>
+                        <input type="text" class="pe-link-child-input" placeholder="<?php echo plugin_lang_get( 'link_child_placeholder' ); ?>" data-bug-id="<?php echo (int) $p_bug_id; ?>" />
+                        <button class="btn btn-sm btn-default pe-link-child-btn" data-bug-id="<?php echo (int) $p_bug_id; ?>">
+                            <i class="fa fa-link"></i> <?php echo plugin_lang_get( 'btn_link_child' ); ?>
+                        </button>
+                    </div>
+                </div>
+                <?php } ?>
                 <div class="pe-info-actions">
                     <?php if( $t_show_advance ) { ?>
                     <button class="btn btn-sm btn-primary pe-bugview-advance"
                             data-bug-id="<?php echo (int) $p_bug_id; ?>"
-                            data-is-subprocess="<?php echo $t_next_is_subprocess ? '1' : '0'; ?>">
+                            data-is-subprocess="<?php echo $t_next_is_subprocess ? '1' : '0'; ?>"
+                            data-note-required="<?php echo $t_note_required ? '1' : '0'; ?>"
+                            data-current-step="<?php echo string_attribute( $t_current_step_name_for_modal ); ?>"
+                            data-next-step="<?php echo string_attribute( $t_next_step_name_for_modal ); ?>">
                         <i class="fa fa-forward"></i>
                         <?php echo plugin_lang_get( 'btn_advance_step' ); ?>
                     </button>
@@ -710,9 +790,38 @@ class ProcessEnginePlugin extends MantisPlugin {
         </div>
     </div>
 </div>
-<?php if( $t_show_advance ) { ?>
+<?php if( $t_show_advance || $t_subprocess_needs_child ) { ?>
 <input type="hidden" id="pe-bugview-token" value="<?php echo form_security_token( 'ProcessEngine_dashboard_action' ); ?>" />
 <input type="hidden" id="pe-bugview-action-url" value="<?php echo plugin_page( 'dashboard_action' ); ?>" />
+<?php } ?>
+<?php if( $t_show_advance ) { ?>
+<!-- İlerleme Modalı -->
+<div class="pe-modal-overlay" id="pe-advance-overlay"></div>
+<div class="pe-modal" id="pe-advance-modal">
+    <div class="pe-modal-header">
+        <?php echo plugin_lang_get( 'modal_advance_title' ); ?>
+        <button class="pe-modal-close" id="pe-modal-close">&times;</button>
+    </div>
+    <div class="pe-modal-body">
+        <div class="pe-modal-step-flow">
+            <strong id="pe-modal-current-step"></strong>
+            <i class="fa fa-arrow-right"></i>
+            <strong id="pe-modal-next-step"></strong>
+        </div>
+        <div class="pe-modal-note-label">
+            <?php echo plugin_lang_get( 'modal_note_label' ); ?>
+            <span class="pe-badge-required" id="pe-modal-required-badge" style="display:none;"><?php echo plugin_lang_get( 'required' ); ?></span>
+        </div>
+        <textarea id="pe-modal-note" class="form-control" rows="4" placeholder="<?php echo plugin_lang_get( 'modal_note_placeholder' ); ?>"></textarea>
+        <div class="pe-modal-error" id="pe-modal-error"></div>
+    </div>
+    <div class="pe-modal-footer">
+        <button class="btn btn-default" id="pe-modal-cancel"><?php echo plugin_lang_get( 'btn_cancel' ); ?></button>
+        <button class="btn btn-primary" id="pe-modal-confirm">
+            <i class="fa fa-forward"></i> <?php echo plugin_lang_get( 'btn_advance_step' ); ?>
+        </button>
+    </div>
+</div>
 <?php } ?>
 <?php
     }
@@ -829,17 +938,32 @@ class ProcessEnginePlugin extends MantisPlugin {
         </div>
         <div class="widget-body">
             <div class="widget-main">
-                <?php if( $t_has_parent && $t_parent_bug_id > 0 && bug_exists( $t_parent_bug_id ) ) { ?>
+                <?php if( $t_has_parent && $t_parent_bug_id > 0 && bug_exists( $t_parent_bug_id ) ) {
+                    $t_parent_project_id = bug_get_field( $t_parent_bug_id, 'project_id' );
+                    $t_parent_visibility = 'hidden';
+                    $t_view_threshold = plugin_config_get( 'view_threshold' );
+                    if( access_has_project_level( $t_view_threshold, $t_parent_project_id ) ) {
+                        $t_parent_visibility = 'full';
+                    } else if( access_has_project_level( VIEWER, $t_parent_project_id ) ) {
+                        $t_parent_visibility = 'metadata';
+                    }
+                ?>
+                <?php if( $t_parent_visibility !== 'hidden' ) { ?>
                 <div class="pe-subprocess-parent">
                     <i class="fa fa-level-up"></i>
                     <strong><?php echo plugin_lang_get( 'parent_process' ); ?>:</strong>
+                    <?php if( $t_parent_visibility === 'full' ) { ?>
                     <a href="<?php echo string_get_bug_view_url( $t_parent_bug_id ); ?>">
                         <?php echo bug_format_id( $t_parent_bug_id ); ?>
                     </a>
+                    <?php } else { ?>
+                    <?php echo bug_format_id( $t_parent_bug_id ); ?>
+                    <?php } ?>
                     <?php if( $t_parent_step_name !== '' ) { ?>
                         — <?php echo string_display_line( $t_parent_step_name ); ?>
                     <?php } ?>
                 </div>
+                <?php } ?>
                 <?php } ?>
 
                 <?php if( $t_has_children ) { ?>
@@ -857,9 +981,26 @@ class ProcessEnginePlugin extends MantisPlugin {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach( $t_children as $t_child ) {
+                            <?php
+                            $t_child_view_threshold = plugin_config_get( 'view_threshold' );
+                            foreach( $t_children as $t_child ) {
                                 $t_child_bug_id = (int) $t_child['bug_id'];
                                 $t_child_exists = bug_exists( $t_child_bug_id );
+
+                                // Proje erişim kontrolü
+                                $t_child_visibility = 'hidden';
+                                if( $t_child_exists ) {
+                                    $t_child_project = bug_get_field( $t_child_bug_id, 'project_id' );
+                                    if( access_has_project_level( $t_child_view_threshold, $t_child_project ) ) {
+                                        $t_child_visibility = 'full';
+                                    } else if( access_has_project_level( VIEWER, $t_child_project ) ) {
+                                        $t_child_visibility = 'metadata';
+                                    }
+                                }
+                                if( $t_child_visibility === 'hidden' ) {
+                                    continue;
+                                }
+
                                 $t_child_status_label = plugin_lang_get( 'instance_' . strtolower( $t_child['status'] ) );
                                 // Çocuk adım adı
                                 $t_c_step_name = '-';
@@ -876,12 +1017,12 @@ class ProcessEnginePlugin extends MantisPlugin {
                             ?>
                             <tr>
                                 <td>
-                                    <?php if( $t_child_exists ) { ?>
+                                    <?php if( $t_child_exists && $t_child_visibility === 'full' ) { ?>
                                         <a href="<?php echo string_get_bug_view_url( $t_child_bug_id ); ?>">
                                             <?php echo bug_format_id( $t_child_bug_id ); ?>
                                         </a>
                                     <?php } else { ?>
-                                        <?php echo $t_child_bug_id; ?>
+                                        <?php echo bug_format_id( $t_child_bug_id ); ?>
                                     <?php } ?>
                                 </td>
                                 <td>
@@ -911,46 +1052,70 @@ class ProcessEnginePlugin extends MantisPlugin {
     }
 
     /**
-     * Render the process timeline table
+     * Render the unified process timeline (card-based)
      */
-    private function render_process_timeline( $t_logs ) {
+    private function render_process_timeline( $t_events ) {
+        // Olay tipi ikon ve renk haritası
+        $t_event_icons = array(
+            'process_started'      => array( 'icon' => 'fa-play-circle',         'color' => '#3498db' ),
+            'status_change'        => array( 'icon' => 'fa-exchange',            'color' => '#2ecc71' ),
+            'step_advanced'        => array( 'icon' => 'fa-forward',             'color' => '#27ae60' ),
+            'subprocess_created'   => array( 'icon' => 'fa-sitemap',             'color' => '#9b59b6' ),
+            'subprocess_completed' => array( 'icon' => 'fa-check-circle',        'color' => '#8e44ad' ),
+            'parent_advanced'      => array( 'icon' => 'fa-level-up',            'color' => '#2980b9' ),
+            'out_of_flow'          => array( 'icon' => 'fa-exclamation-triangle', 'color' => '#e67e22' ),
+            'note_added'           => array( 'icon' => 'fa-comment',             'color' => '#7f8c8d' ),
+        );
 ?>
 <div class="col-md-12 col-xs-12">
     <div class="space-10"></div>
     <div class="widget-box widget-color-blue2">
         <div class="widget-header widget-header-small">
             <h4 class="widget-title lighter">
-                <i class="ace-icon fa fa-cogs"></i>
+                <i class="ace-icon fa fa-clock-o"></i>
                 <?php echo plugin_lang_get( 'process_timeline' ); ?>
             </h4>
         </div>
         <div class="widget-body">
-            <div class="widget-main no-padding">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-condensed table-striped">
-                        <thead>
-                            <tr>
-                                <th><?php echo plugin_lang_get( 'col_date' ); ?></th>
-                                <th><?php echo plugin_lang_get( 'col_from_status' ); ?></th>
-                                <th><?php echo plugin_lang_get( 'col_to_status' ); ?></th>
-                                <th><?php echo plugin_lang_get( 'col_user' ); ?></th>
-                                <th><?php echo plugin_lang_get( 'col_step' ); ?></th>
-                                <th><?php echo plugin_lang_get( 'col_note' ); ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach( $t_logs as $t_log ) { ?>
-                            <tr>
-                                <td><?php echo date( 'Y-m-d H:i', $t_log['created_at'] ); ?></td>
-                                <td><span class="process-status"><?php echo (int)$t_log['from_status'] === 0 ? '-' : get_enum_element( 'status', $t_log['from_status'] ); ?></span></td>
-                                <td><span class="process-status"><?php echo get_enum_element( 'status', $t_log['to_status'] ); ?></span></td>
-                                <td><?php echo ( (int) $t_log['user_id'] > 0 && user_exists( (int) $t_log['user_id'] ) ) ? user_get_name( $t_log['user_id'] ) : '-'; ?></td>
-                                <td><?php echo string_display_line( $t_log['step_name'] ); ?></td>
-                                <td><?php echo string_display_line( $t_log['note'] ); ?></td>
-                            </tr>
+            <div class="widget-main">
+                <div class="pe-timeline">
+                    <?php foreach( $t_events as $t_event ) {
+                        $t_type = $t_event['event_type'];
+                        $t_icon_info = isset( $t_event_icons[$t_type] ) ? $t_event_icons[$t_type] : array( 'icon' => 'fa-circle', 'color' => '#95a5a6' );
+                        $t_user_name = ( (int) $t_event['user_id'] > 0 && user_exists( (int) $t_event['user_id'] ) )
+                            ? user_get_name( $t_event['user_id'] ) : '-';
+                        $t_type_label = plugin_lang_get( 'event_type_' . $t_type );
+                    ?>
+                    <div class="pe-timeline-item">
+                        <div class="pe-timeline-icon" style="background-color: <?php echo $t_icon_info['color']; ?>;">
+                            <i class="fa <?php echo $t_icon_info['icon']; ?>"></i>
+                        </div>
+                        <div class="pe-timeline-card">
+                            <div class="pe-timeline-header">
+                                <span class="pe-timeline-type"><?php echo string_display_line( $t_type_label ); ?></span>
+                                <?php if( $t_event['transition_label'] !== '' ) { ?>
+                                    <span class="pe-timeline-label"><?php echo string_display_line( $t_event['transition_label'] ); ?></span>
+                                <?php } ?>
+                                <span class="pe-timeline-meta">
+                                    <?php echo $t_user_name; ?> &mdash; <?php echo date( 'Y-m-d H:i', $t_event['created_at'] ); ?>
+                                </span>
+                            </div>
+                            <?php if( $t_event['source'] === 'process_log' && (int) $t_event['from_status'] > 0 ) { ?>
+                            <div class="pe-timeline-status">
+                                <span class="process-status"><?php echo get_enum_element( 'status', $t_event['from_status'] ); ?></span>
+                                <i class="fa fa-arrow-right"></i>
+                                <span class="process-status"><?php echo get_enum_element( 'status', $t_event['to_status'] ); ?></span>
+                                <?php if( $t_event['step_name'] !== '' ) { ?>
+                                    <span class="pe-timeline-step"><?php echo string_display_line( $t_event['step_name'] ); ?></span>
+                                <?php } ?>
+                            </div>
                             <?php } ?>
-                        </tbody>
-                    </table>
+                            <?php if( $t_event['note'] !== '' ) { ?>
+                            <div class="pe-timeline-note"><?php echo string_display_line( $t_event['note'] ); ?></div>
+                            <?php } ?>
+                        </div>
+                    </div>
+                    <?php } ?>
                 </div>
             </div>
         </div>
