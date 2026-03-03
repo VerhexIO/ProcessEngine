@@ -30,6 +30,9 @@ scripts/test_seed.php
 
 # Screenshots / test artifacts
 *.png
+test-results/
+tests/.test-state.json
+tests/.faz11-test-state.json
 
 # Dependencies
 vendor/
