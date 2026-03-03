@@ -80,8 +80,8 @@ function notification_send_to_users( $p_user_ids, $p_subject, $p_body ) {
         if( is_blank( $t_email ) ) {
             continue;
         }
-        $t_header = 'X-MantisBT-ProcessEngine: SLA-Notification';
-        email_store( $t_email, $p_subject, $p_body, $t_header );
+        $t_headers = array( 'X-MantisBT-ProcessEngine: SLA-Notification' );
+        email_store( $t_email, $p_subject, $p_body, $t_headers );
     }
 
     // Trigger email send if not using cronjob

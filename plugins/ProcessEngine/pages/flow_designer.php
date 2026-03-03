@@ -35,7 +35,7 @@ if( $t_action === 'unpublish' && $t_flow_id > 0 ) {
         layout_page_end();
         exit;
     }
-    print_header_redirect( plugin_page( 'flow_designer', true ) );
+    print_header_redirect( plugin_page( 'flow_designer', true ) . '&flow_id=' . $t_flow_id );
 }
 
 // Handle delete
