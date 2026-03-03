@@ -1,0 +1,217 @@
+/* ProcessEngine - Process Tree Styles */
+
+/* Toolbar */
+.pe-tree-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Tree Container */
+.pe-tree-container {
+    padding: 10px 0;
+}
+
+/* Tree Node */
+.pe-tree-node {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+/* Tree Card */
+.pe-tree-card {
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.pe-tree-card:hover {
+    border-color: #999;
+}
+
+/* Target node highlight */
+.pe-tree-node-target > .pe-tree-card {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+/* Status-based card borders */
+.pe-tree-card.pe-tree-status-active {
+    border-left: 4px solid #3498db;
+}
+.pe-tree-card.pe-tree-status-waiting {
+    border-left: 4px solid #f39c12;
+}
+.pe-tree-card.pe-tree-status-completed {
+    border-left: 4px solid #27ae60;
+}
+.pe-tree-card.pe-tree-status-cancelled {
+    border-left: 4px solid #95a5a6;
+}
+
+/* Card Header */
+.pe-tree-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+/* Status Badge */
+.pe-tree-status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+}
+.pe-tree-status-badge.pe-tree-status-active {
+    background-color: #3498db;
+}
+.pe-tree-status-badge.pe-tree-status-waiting {
+    background-color: #f39c12;
+}
+.pe-tree-status-badge.pe-tree-status-completed {
+    background-color: #27ae60;
+}
+.pe-tree-status-badge.pe-tree-status-cancelled {
+    background-color: #95a5a6;
+}
+
+/* Toggle button */
+.pe-tree-toggle {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    padding: 2px 6px;
+}
+.pe-tree-toggle:hover {
+    color: #333;
+}
+.pe-tree-toggle.collapsed i {
+    transform: rotate(-90deg);
+}
+.pe-tree-toggle i {
+    transition: transform 0.2s;
+}
+
+/* Card Body */
+.pe-tree-card-body {
+    padding: 10px 12px;
+}
+
+/* Bug ID */
+.pe-tree-bug-id {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.pe-tree-bug-id a {
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Summary */
+.pe-tree-summary {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+/* Restricted access */
+.pe-tree-restricted {
+    color: #999;
+    font-style: italic;
+}
+.pe-tree-restricted .fa {
+    margin-right: 4px;
+}
+
+/* Info Row */
+.pe-tree-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 6px;
+}
+.pe-tree-info-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 100px;
+}
+.pe-tree-info-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+.pe-tree-info-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Tree Progress Bar */
+.pe-tree-progress {
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 18px;
+    min-width: 80px;
+}
+.pe-tree-progress-fill {
+    height: 100%;
+    background-color: #3498db;
+    text-align: center;
+    color: #fff;
+    font-size: 10px;
+    line-height: 18px;
+    font-weight: bold;
+    transition: width 0.3s ease;
+}
+.pe-tree-progress-fill.pe-progress-complete {
+    background-color: #27ae60;
+}
+
+/* Children container - indentation */
+.pe-tree-children {
+    margin-left: 32px;
+    padding-left: 16px;
+    border-left: 2px solid #ddd;
+    margin-top: 4px;
+}
+.pe-tree-children.collapsed {
+    display: none;
+}
+
+/* Connector dots */
+.pe-tree-children > .pe-tree-node::before {
+    content: '';
+    position: absolute;
+    left: -17px;
+    top: 20px;
+    width: 14px;
+    height: 2px;
+    background: #ddd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pe-tree-children {
+        margin-left: 16px;
+        padding-left: 10px;
+    }
+    .pe-tree-info-row {
+        gap: 10px;
+    }
+    .pe-tree-info-item {
+        min-width: 80px;
+    }
+}

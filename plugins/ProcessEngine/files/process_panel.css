@@ -1,0 +1,321 @@
+/* ProcessEngine - Dashboard & Process Panel Styles */
+
+/* Summary Cards */
+.pe-card {
+    text-align: center;
+    padding: 15px 10px;
+    min-height: 90px;
+}
+.pe-card-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    line-height: 1.2;
+}
+.pe-card-label {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+    text-transform: uppercase;
+}
+.pe-card-blue .pe-card-value { color: #3498db; }
+.pe-card-red .pe-card-value { color: #e74c3c; }
+.pe-card-green .pe-card-value { color: #27ae60; }
+.pe-card-orange .pe-card-value { color: #f39c12; }
+.pe-card-purple .pe-card-value { color: #9b59b6; }
+
+/* SLA Status Badges */
+.pe-sla-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+}
+.pe-sla-normal {
+    background-color: #27ae60;
+}
+.pe-sla-warning {
+    background-color: #f39c12;
+}
+.pe-sla-exceeded {
+    background-color: #e74c3c;
+}
+
+/* Process Timeline (issue detail) */
+.process-timeline {
+    padding: 10px;
+}
+.process-timeline table {
+    margin-bottom: 0;
+}
+.process-status {
+    font-weight: 600;
+}
+
+/* Filter buttons */
+.widget-toolbox .btn-group .btn {
+    margin-right: 4px;
+}
+
+/* Responsive table fix */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* ---- Process Info Panel ---- */
+.pe-info-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 10px 0;
+}
+.pe-info-item {
+    flex: 1 1 150px;
+    min-width: 120px;
+}
+.pe-info-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.pe-info-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+.pe-sla-overdue-text {
+    color: #e74c3c;
+}
+
+/* ---- Step Progress Bar (Stepper) ---- */
+.pe-stepper {
+    display: flex;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding: 15px 10px;
+    gap: 0;
+}
+.pe-stepper-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    min-width: 100px;
+    flex: 1;
+}
+.pe-step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #ccc;
+    position: relative;
+    z-index: 2;
+}
+.pe-step-completed .pe-step-circle {
+    background-color: #27ae60;
+}
+.pe-step-current .pe-step-circle {
+    background-color: #3498db;
+    box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.3);
+}
+.pe-step-pending .pe-step-circle {
+    background-color: #bdc3c7;
+}
+.pe-step-label {
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+    word-break: break-word;
+    max-width: 110px;
+}
+.pe-step-dept {
+    font-size: 10px;
+    color: #888;
+    text-align: center;
+    margin-top: 2px;
+}
+.pe-step-connector {
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 18px);
+    width: calc(100% - 36px);
+    height: 3px;
+    background-color: #ddd;
+    z-index: 1;
+}
+.pe-step-completed .pe-step-connector {
+    background-color: #27ae60;
+}
+.pe-step-current .pe-step-connector {
+    background-color: #ddd;
+}
+
+/* ---- Dashboard Progress Bar ---- */
+.pe-progress-bar-wrapper {
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 20px;
+    min-width: 80px;
+}
+.pe-progress-bar-fill {
+    height: 100%;
+    background-color: #3498db;
+    text-align: center;
+    color: #fff;
+    font-size: 11px;
+    line-height: 20px;
+    font-weight: bold;
+    transition: width 0.3s ease;
+}
+.pe-progress-bar-fill.pe-progress-complete {
+    background-color: #27ae60;
+}
+
+/* ---- Subprocess Panel (Bug Detail) ---- */
+.pe-subprocess-parent {
+    padding: 6px 0;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+.pe-subprocess-parent .fa {
+    color: #3498db;
+    margin-right: 4px;
+}
+.pe-subprocess-children {
+    padding: 6px 0;
+}
+.pe-subprocess-summary {
+    font-size: 13px;
+    color: #555;
+    margin-left: 6px;
+}
+.pe-subprocess-tree-link {
+    padding: 4px 0;
+}
+
+/* Status badges for subprocess children */
+.pe-tree-status-active-badge {
+    background-color: #3498db;
+    color: #fff;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.pe-tree-status-waiting-badge {
+    background-color: #f39c12;
+    color: #fff;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.pe-tree-status-completed-badge {
+    background-color: #27ae60;
+    color: #fff;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.pe-tree-status-cancelled-badge {
+    background-color: #95a5a6;
+    color: #fff;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* Dashboard subprocess column */
+.pe-subprocess-col {
+    font-size: 12px;
+    white-space: nowrap;
+}
+.pe-subprocess-col .fa-sitemap {
+    color: #8e44ad;
+    cursor: pointer;
+    margin-left: 6px;
+}
+
+/* ---- Subprocess Status Badges ---- */
+.pe-status-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+.pe-badge-active {
+    background-color: #3498db;
+}
+.pe-badge-waiting {
+    background-color: #f39c12;
+}
+.pe-badge-waiting-step {
+    background-color: #f39c12;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.pe-badge-waiting-step .fa {
+    margin-right: 3px;
+}
+.pe-sub-summary {
+    font-weight: 600;
+    color: #555;
+    margin-right: 4px;
+}
+
+/* ---- Waiting Progress Bar ---- */
+.pe-progress-bar-fill.pe-progress-waiting {
+    background-color: #f39c12;
+}
+
+/* ---- Process Tree Enhancements ---- */
+.pe-tree-child-summary {
+    padding: 6px 0;
+    margin-top: 4px;
+    border-top: 1px solid #eee;
+    font-size: 12px;
+}
+.pe-tree-child-summary .pe-tree-info-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    margin-right: 6px;
+}
+.pe-tree-wait-mode {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8e44ad;
+    background-color: #f3e5f5;
+    margin-left: 4px;
+}
+.pe-tree-wait-mode .fa {
+    margin-right: 2px;
+}

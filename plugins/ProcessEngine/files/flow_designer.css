@@ -1,0 +1,131 @@
+/* ProcessEngine - Flow Designer Styles */
+
+#pe-canvas-wrapper {
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* SVG Node (step) */
+.pe-node rect {
+    fill: #fff;
+    stroke: #3498db;
+    stroke-width: 2;
+    rx: 6;
+    ry: 6;
+    cursor: move;
+}
+.pe-node rect:hover {
+    stroke: #2980b9;
+    stroke-width: 3;
+}
+.pe-node.pe-selected rect {
+    stroke: #e74c3c;
+    stroke-width: 3;
+}
+.pe-node text.pe-node-title {
+    font-size: 13px;
+    font-weight: bold;
+    fill: #333;
+    pointer-events: none;
+}
+.pe-node text.pe-node-dept {
+    font-size: 11px;
+    fill: #777;
+    pointer-events: none;
+}
+.pe-node text.pe-node-sla {
+    font-size: 10px;
+    fill: #999;
+    pointer-events: none;
+}
+
+/* Connection port (circle on node edge) */
+.pe-port {
+    fill: #3498db;
+    stroke: #fff;
+    stroke-width: 2;
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.pe-node:hover .pe-port {
+    opacity: 1;
+}
+
+/* Transition arrow */
+.pe-transition {
+    stroke: #666;
+    stroke-width: 2;
+    fill: none;
+    marker-end: url(#arrowhead);
+    cursor: pointer;
+}
+.pe-transition:hover {
+    stroke: #e74c3c;
+    stroke-width: 3;
+}
+
+/* Dragging line */
+.pe-drag-line {
+    stroke: #3498db;
+    stroke-width: 2;
+    stroke-dasharray: 5,5;
+    fill: none;
+    pointer-events: none;
+}
+
+/* Status message */
+#pe-status-msg.label-success { display: inline-block !important; }
+#pe-status-msg.label-danger { display: inline-block !important; }
+#pe-status-msg.label-warning { display: inline-block !important; }
+
+/* Context menu */
+.pe-context-menu {
+    display: none;
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 1000;
+    min-width: 140px;
+}
+.pe-context-menu .pe-ctx-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.pe-context-menu .pe-ctx-item:hover {
+    background: #f0f0f0;
+}
+.pe-context-menu .pe-ctx-item.pe-ctx-danger {
+    color: #e74c3c;
+}
+
+/* Subprocess node */
+.pe-node-subprocess rect {
+    stroke: #8e44ad;
+    stroke-width: 2.5;
+}
+.pe-node-subprocess rect:hover {
+    stroke: #6c3483;
+    stroke-width: 3;
+}
+.pe-node-subprocess.pe-selected rect {
+    stroke: #e74c3c;
+    stroke-width: 3;
+}
+
+/* Conditional transition (dashed) */
+.pe-transition-conditional {
+    stroke-dasharray: 6,3;
+}
+
+/* Transition label */
+.pe-transition-label {
+    font-size: 11px;
+    fill: #555;
+    font-weight: 500;
+    background: #fff;
+}

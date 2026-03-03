@@ -1,0 +1,232 @@
+<?php
+/** Turkish strings for ProcessEngine plugin */
+
+$s_plugin_ProcessEngine_plugin_title = 'Süreç Motoru';
+$s_plugin_ProcessEngine_plugin_description = 'MantisBT için departmanlar arası iş akışı yönetim motoru. Fiyat talebi, ürün geliştirme gibi süreçleri otomatize eder.';
+
+# Menu
+$s_plugin_ProcessEngine_menu_dashboard = 'Süreç Paneli';
+$s_plugin_ProcessEngine_menu_config = 'Süreç Motoru Ayarları';
+$s_plugin_ProcessEngine_menu_flow_designer = 'Akış Tasarımcısı';
+
+# Dashboard
+$s_plugin_ProcessEngine_dashboard_title = 'Süreç Paneli';
+$s_plugin_ProcessEngine_total_requests = 'Toplam Talep';
+$s_plugin_ProcessEngine_active_processes = 'Aktif Süreçler';
+$s_plugin_ProcessEngine_sla_exceeded = 'SLA Aşımı';
+$s_plugin_ProcessEngine_avg_resolution_time = 'Ort. Çözüm Süresi';
+$s_plugin_ProcessEngine_updated_today = 'Bugün Güncellenen';
+$s_plugin_ProcessEngine_pending_approvals = 'Bekleyen Onaylar';
+
+# Filters
+$s_plugin_ProcessEngine_filter_all = 'Tümü';
+$s_plugin_ProcessEngine_filter_active = 'Aktif';
+$s_plugin_ProcessEngine_filter_sla_exceeded = 'SLA Aşımı';
+$s_plugin_ProcessEngine_filter_completed = 'Tamamlanan';
+
+# Table columns
+$s_plugin_ProcessEngine_col_bug_id = 'Talep No';
+$s_plugin_ProcessEngine_col_summary = 'Başlık';
+$s_plugin_ProcessEngine_col_current_step = 'Mevcut Adım';
+$s_plugin_ProcessEngine_col_department = 'Departman';
+$s_plugin_ProcessEngine_col_sla_status = 'SLA Durumu';
+$s_plugin_ProcessEngine_col_updated = 'Güncelleme';
+$s_plugin_ProcessEngine_col_date = 'Tarih';
+$s_plugin_ProcessEngine_col_from_status = 'Önceki Durum';
+$s_plugin_ProcessEngine_col_to_status = 'Yeni Durum';
+$s_plugin_ProcessEngine_col_user = 'Kullanıcı';
+$s_plugin_ProcessEngine_col_step = 'Adım';
+$s_plugin_ProcessEngine_col_note = 'Not';
+$s_plugin_ProcessEngine_col_flow_name = 'Akış Adı';
+$s_plugin_ProcessEngine_col_status = 'Durum';
+$s_plugin_ProcessEngine_col_actions = 'İşlemler';
+
+# Process timeline
+$s_plugin_ProcessEngine_process_timeline = 'Süreç Zaman Çizelgesi';
+$s_plugin_ProcessEngine_no_process_data = 'Bu talep için süreç verisi bulunmamaktadır.';
+
+# Flow Designer
+$s_plugin_ProcessEngine_flow_designer_title = 'Akış Tasarımcısı';
+$s_plugin_ProcessEngine_flow_list_title = 'Akış Listesi';
+$s_plugin_ProcessEngine_new_flow = 'Yeni Akış';
+$s_plugin_ProcessEngine_flow_name = 'Akış Adı';
+$s_plugin_ProcessEngine_flow_description = 'Açıklama';
+$s_plugin_ProcessEngine_flow_status_draft = 'Taslak';
+$s_plugin_ProcessEngine_flow_status_pending = 'Onay Bekliyor';
+$s_plugin_ProcessEngine_flow_status_active = 'Aktif';
+$s_plugin_ProcessEngine_btn_save = 'Kaydet';
+$s_plugin_ProcessEngine_btn_validate = 'Doğrula';
+$s_plugin_ProcessEngine_btn_publish = 'Yayınla';
+$s_plugin_ProcessEngine_btn_add_step = 'Adım Ekle';
+$s_plugin_ProcessEngine_btn_delete = 'Sil';
+$s_plugin_ProcessEngine_btn_edit = 'Düzenle';
+$s_plugin_ProcessEngine_btn_back = 'Geri';
+
+# Step properties
+$s_plugin_ProcessEngine_step_name = 'Adım Adı';
+$s_plugin_ProcessEngine_step_department = 'Departman';
+$s_plugin_ProcessEngine_step_sla_hours = 'SLA (Saat)';
+$s_plugin_ProcessEngine_step_role = 'Rol';
+$s_plugin_ProcessEngine_step_mantis_status = 'MantisBT Durumu';
+
+# Departments
+$s_plugin_ProcessEngine_dept_sales = 'Satış';
+$s_plugin_ProcessEngine_dept_pricing = 'Fiyatlandırma';
+$s_plugin_ProcessEngine_dept_sales_ops = 'Satış Operasyon';
+$s_plugin_ProcessEngine_dept_procurement = 'Satınalma';
+$s_plugin_ProcessEngine_dept_rnd = 'ArGe';
+$s_plugin_ProcessEngine_dept_management = 'Yönetim';
+$s_plugin_ProcessEngine_dept_quality = 'Kalite';
+
+# Validation messages
+$s_plugin_ProcessEngine_validation_success = 'Akış doğrulaması başarılı.';
+$s_plugin_ProcessEngine_validation_no_start = 'Akışta bir başlangıç düğümü olmalıdır.';
+$s_plugin_ProcessEngine_validation_no_end = 'Akışta en az bir bitiş düğümü olmalıdır.';
+$s_plugin_ProcessEngine_validation_cycle = 'Akışta döngü tespit edildi.';
+$s_plugin_ProcessEngine_validation_unreachable = 'Bazı düğümlere başlangıçtan ulaşılamıyor.';
+$s_plugin_ProcessEngine_validation_multiple_start = 'Birden fazla başlangıç düğümü olamaz.';
+
+# SLA
+$s_plugin_ProcessEngine_sla_normal = 'Normal';
+$s_plugin_ProcessEngine_sla_warning = 'Uyarı';
+$s_plugin_ProcessEngine_sla_exceeded = 'Aşım';
+$s_plugin_ProcessEngine_sla_check = 'SLA Kontrol';
+$s_plugin_ProcessEngine_sla_dashboard = 'SLA Durumu';
+$s_plugin_ProcessEngine_bottlenecks = 'Darboğazları Göster';
+
+# Escalation
+$s_plugin_ProcessEngine_escalation_warning_subject = '[MantisBT] SLA Uyarısı - Talep #%d';
+$s_plugin_ProcessEngine_escalation_warning_body = 'Talep #%1$d için "%2$s" adımında SLA süresinin %%80\'i dolmuştur. Kalan süre: %3$s saat.';
+$s_plugin_ProcessEngine_escalation_exceeded_subject = '[MantisBT] SLA Aşımı - Talep #%d';
+$s_plugin_ProcessEngine_escalation_exceeded_body = 'Talep #%1$d için "%2$s" adımında SLA süresi aşılmıştır. Aşım süresi: %3$s saat.';
+$s_plugin_ProcessEngine_escalation_level1_subject = '[MantisBT] Eskalasyon Seviye 1 - Talep #%d';
+$s_plugin_ProcessEngine_escalation_level1_body = 'Talep #%1$d için "%2$s" adımında SLA süresinin 1.5 katı aşılmıştır. Yönetici müdahalesi gereklidir.';
+$s_plugin_ProcessEngine_escalation_level2_subject = '[MantisBT] Eskalasyon Seviye 2 - Talep #%d';
+$s_plugin_ProcessEngine_escalation_level2_body = 'Talep #%1$d için "%2$s" adımında SLA süresinin 2 katı aşılmıştır. Acil müdahale gereklidir.';
+
+# Config page
+$s_plugin_ProcessEngine_config_title = 'Süreç Motoru Yapılandırması';
+$s_plugin_ProcessEngine_config_manage_threshold = 'Yönetim Erişim Seviyesi';
+$s_plugin_ProcessEngine_config_view_threshold = 'Görüntüleme Erişim Seviyesi';
+$s_plugin_ProcessEngine_config_sla_warning_percent = 'SLA Uyarı Yüzdesi';
+$s_plugin_ProcessEngine_config_business_hours_start = 'İş Saati Başlangıç';
+$s_plugin_ProcessEngine_config_business_hours_end = 'İş Saati Bitiş';
+$s_plugin_ProcessEngine_config_working_days = 'Çalışma Günleri';
+$s_plugin_ProcessEngine_config_saved = 'Yapılandırma kaydedildi.';
+$s_plugin_ProcessEngine_config_working_days_help = 'Virgülle ayrılmış gün numaraları (1=Pazartesi, 7=Pazar)';
+$s_plugin_ProcessEngine_config_departments = 'Departmanlar';
+$s_plugin_ProcessEngine_config_departments_help = 'Virgülle ayrılmış departman adları. Boş bırakılırsa serbest giriş yapılabilir.';
+
+# Misc
+$s_plugin_ProcessEngine_hours = 'saat';
+$s_plugin_ProcessEngine_days = 'gün';
+$s_plugin_ProcessEngine_no_data = 'Veri bulunamadı.';
+$s_plugin_ProcessEngine_confirm_delete = 'Silmek istediğinizden emin misiniz?';
+$s_plugin_ProcessEngine_published_success = 'Akış başarıyla yayınlandı.';
+$s_plugin_ProcessEngine_save_success = 'Kaydedildi.';
+$s_plugin_ProcessEngine_seed_data = 'Örnek Veri Yükle';
+$s_plugin_ProcessEngine_seed_success = 'Örnek veriler başarıyla yüklendi.';
+
+# Proje ve süreç
+$s_plugin_ProcessEngine_flow_project = 'Proje';
+$s_plugin_ProcessEngine_all_projects = 'Tüm Projeler';
+$s_plugin_ProcessEngine_process_started = 'Süreç başlatıldı';
+$s_plugin_ProcessEngine_out_of_flow_transition = 'Akış dışı geçiş';
+
+# Otomatik atama
+$s_plugin_ProcessEngine_step_handler = 'Sorumlu Kişi';
+$s_plugin_ProcessEngine_no_auto_assign = 'Otomatik atama yok';
+$s_plugin_ProcessEngine_auto_handler_assigned = 'Otomatik atama: %s sorumlu olarak atandı.';
+
+# Süreç bilgi paneli
+$s_plugin_ProcessEngine_process_info = 'Süreç Bilgisi';
+$s_plugin_ProcessEngine_current_step = 'Mevcut Adım';
+$s_plugin_ProcessEngine_step_progress = 'İlerleme';
+$s_plugin_ProcessEngine_step_of = 'Adım %d / %d';
+$s_plugin_ProcessEngine_sla_remaining = 'SLA Kalan';
+$s_plugin_ProcessEngine_sla_overdue = 'Süre aşıldı';
+$s_plugin_ProcessEngine_responsible = 'Sorumlu';
+
+# Dashboard ek sütunlar
+$s_plugin_ProcessEngine_all_departments = 'Tüm Departmanlar';
+$s_plugin_ProcessEngine_col_handler = 'Sorumlu';
+$s_plugin_ProcessEngine_col_progress = 'İlerleme';
+
+# Departman yönetimi
+$s_plugin_ProcessEngine_dept_other = 'Diğer (Serbest Giriş)';
+$s_plugin_ProcessEngine_dept_custom_placeholder = 'Departman adını yazın...';
+
+# Alt Süreç (Hiyerarşik Süreç Motoru)
+$s_plugin_ProcessEngine_subprocess = 'Alt Süreç';
+$s_plugin_ProcessEngine_subprocess_step = 'Alt Süreç Adımı';
+$s_plugin_ProcessEngine_step_type = 'Adım Tipi';
+$s_plugin_ProcessEngine_step_type_normal = 'Normal';
+$s_plugin_ProcessEngine_step_type_subprocess = 'Alt Süreç';
+$s_plugin_ProcessEngine_child_flow = 'Alt Süreç Akışı';
+$s_plugin_ProcessEngine_child_project = 'Hedef Proje';
+$s_plugin_ProcessEngine_wait_mode = 'Bekleme Modu';
+$s_plugin_ProcessEngine_wait_mode_all = 'Tümünü Bekle';
+$s_plugin_ProcessEngine_wait_mode_any = 'Herhangi Birini Bekle';
+$s_plugin_ProcessEngine_process_tree = 'Süreç Ağacı';
+$s_plugin_ProcessEngine_view_process_tree = 'Süreç Ağacını Görüntüle';
+$s_plugin_ProcessEngine_parent_process = 'Ebeveyn Süreç';
+$s_plugin_ProcessEngine_child_processes = 'Alt Süreçler';
+$s_plugin_ProcessEngine_instance_status = 'Süreç Durumu';
+$s_plugin_ProcessEngine_instance_active = 'Aktif';
+$s_plugin_ProcessEngine_instance_waiting = 'Beklemede';
+$s_plugin_ProcessEngine_instance_completed = 'Tamamlandı';
+$s_plugin_ProcessEngine_instance_cancelled = 'İptal Edildi';
+$s_plugin_ProcessEngine_migrate_data = 'Verileri Göç Et';
+$s_plugin_ProcessEngine_migrate_success = '%d süreç kaydı başarıyla göç ettirildi.';
+$s_plugin_ProcessEngine_migrate_none = 'Göç ettirilecek veri bulunamadı.';
+$s_plugin_ProcessEngine_transition_label = 'Geçiş Etiketi';
+$s_plugin_ProcessEngine_condition_type = 'Koşul Tipi';
+$s_plugin_ProcessEngine_condition_none = 'Koşulsuz';
+$s_plugin_ProcessEngine_condition_field_equals = 'Alan Eşittir';
+$s_plugin_ProcessEngine_condition_status_is = 'Durum Eşittir';
+$s_plugin_ProcessEngine_subprocess_cycle_detected = 'Alt süreç zincirinde döngü tespit edildi.';
+$s_plugin_ProcessEngine_subprocess_invalid_flow = 'Geçersiz alt süreç akışı.';
+$s_plugin_ProcessEngine_subprocess_invalid_project = 'Geçersiz hedef proje.';
+$s_plugin_ProcessEngine_col_subprocess = 'Alt Süreçler';
+$s_plugin_ProcessEngine_pending_subprocesses = 'Bekleyen Alt Süreçler';
+
+# Süreç Ağacı (Faz 4)
+$s_plugin_ProcessEngine_tree_restricted_access = 'Erişim kısıtlı';
+$s_plugin_ProcessEngine_tree_no_tree = 'Bu talep için süreç ağacı bulunamadı.';
+$s_plugin_ProcessEngine_tree_root = 'Kök Süreç';
+$s_plugin_ProcessEngine_tree_depth = 'Derinlik';
+$s_plugin_ProcessEngine_parent_link = 'Ebeveyn Süreç: #%d — %s';
+$s_plugin_ProcessEngine_child_summary = '%d/%d tamamlandı';
+$s_plugin_ProcessEngine_col_tree = 'Ağaç';
+$s_plugin_ProcessEngine_subprocess_of = '#%d alt süreci';
+
+# Dallanma ve Koşullu Geçişler (Faz 5)
+$s_plugin_ProcessEngine_condition_field = 'Koşul Alanı';
+$s_plugin_ProcessEngine_condition_value = 'Koşul Değeri';
+$s_plugin_ProcessEngine_branching_auto = 'Otomatik dallanma: koşula göre %s adımına geçildi';
+$s_plugin_ProcessEngine_sla_tree_summary = 'Ağaç SLA Özeti';
+$s_plugin_ProcessEngine_sla_tree_total = 'Toplam Aktif SLA';
+$s_plugin_ProcessEngine_sla_tree_worst = 'En Kötü Durum';
+
+# Dashboard Aksiyonları (Faz 7)
+$s_plugin_ProcessEngine_config_action_threshold = 'İşlem Yetki Seviyesi';
+$s_plugin_ProcessEngine_config_action_threshold_help = 'Dashboard üzerinden adım ilerleme ve SLA güncelleme işlemlerini yapabilecek minimum yetki seviyesi';
+$s_plugin_ProcessEngine_action_advance_confirm = 'Bu sorunu sonraki adıma ilerletmek istediğinize emin misiniz?';
+$s_plugin_ProcessEngine_action_advance_success = 'Sorun başarıyla sonraki adıma ilerletildi.';
+$s_plugin_ProcessEngine_action_advance_no_transition = 'Bu adımdan çıkan geçerli bir geçiş bulunamadı.';
+$s_plugin_ProcessEngine_action_sla_refreshed = 'SLA durumu güncellendi.';
+$s_plugin_ProcessEngine_action_invalid = 'Geçersiz işlem.';
+
+# Faz 8: Alt Süreç İyileştirmeleri
+$s_plugin_ProcessEngine_badge_active = 'aktif';
+$s_plugin_ProcessEngine_badge_waiting = 'beklemede';
+$s_plugin_ProcessEngine_subprocess_waiting_label = 'Alt Süreç Bekleniyor';
+$s_plugin_ProcessEngine_child_detail_summary = '%d/%d tamamlandı, %d aktif, %d beklemede';
+$s_plugin_ProcessEngine_tree_sla_info = 'SLA Bilgisi';
+
+# Faz 9: Üretim Hazırlığı
+$s_plugin_ProcessEngine_btn_cancel = 'İptal';
+$s_plugin_ProcessEngine_condition_field_label = 'Alan / Durum';
+$s_plugin_ProcessEngine_condition_value_label = 'Değer';
+$s_plugin_ProcessEngine_flow_delete_blocked = 'Bu akışa bağlı aktif süreçler bulunduğundan silinemez.';
+$s_plugin_ProcessEngine_flow_edit_blocked = 'Aktif akışlar düzenlenemez. Önce taslak durumuna alın.';

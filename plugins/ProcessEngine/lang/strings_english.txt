@@ -1,0 +1,232 @@
+<?php
+/** English strings for ProcessEngine plugin */
+
+$s_plugin_ProcessEngine_plugin_title = 'Process Engine';
+$s_plugin_ProcessEngine_plugin_description = 'Workflow management engine for inter-departmental processes in MantisBT. Automates price requests, product development workflows.';
+
+# Menu
+$s_plugin_ProcessEngine_menu_dashboard = 'Process Panel';
+$s_plugin_ProcessEngine_menu_config = 'Process Engine Settings';
+$s_plugin_ProcessEngine_menu_flow_designer = 'Flow Designer';
+
+# Dashboard
+$s_plugin_ProcessEngine_dashboard_title = 'Process Panel';
+$s_plugin_ProcessEngine_total_requests = 'Total Requests';
+$s_plugin_ProcessEngine_active_processes = 'Active Processes';
+$s_plugin_ProcessEngine_sla_exceeded = 'SLA Exceeded';
+$s_plugin_ProcessEngine_avg_resolution_time = 'Avg Resolution Time';
+$s_plugin_ProcessEngine_updated_today = 'Updated Today';
+$s_plugin_ProcessEngine_pending_approvals = 'Pending Approvals';
+
+# Filters
+$s_plugin_ProcessEngine_filter_all = 'All';
+$s_plugin_ProcessEngine_filter_active = 'Active';
+$s_plugin_ProcessEngine_filter_sla_exceeded = 'SLA Exceeded';
+$s_plugin_ProcessEngine_filter_completed = 'Completed';
+
+# Table columns
+$s_plugin_ProcessEngine_col_bug_id = 'Request ID';
+$s_plugin_ProcessEngine_col_summary = 'Summary';
+$s_plugin_ProcessEngine_col_current_step = 'Current Step';
+$s_plugin_ProcessEngine_col_department = 'Department';
+$s_plugin_ProcessEngine_col_sla_status = 'SLA Status';
+$s_plugin_ProcessEngine_col_updated = 'Updated';
+$s_plugin_ProcessEngine_col_date = 'Date';
+$s_plugin_ProcessEngine_col_from_status = 'From Status';
+$s_plugin_ProcessEngine_col_to_status = 'To Status';
+$s_plugin_ProcessEngine_col_user = 'User';
+$s_plugin_ProcessEngine_col_step = 'Step';
+$s_plugin_ProcessEngine_col_note = 'Note';
+$s_plugin_ProcessEngine_col_flow_name = 'Flow Name';
+$s_plugin_ProcessEngine_col_status = 'Status';
+$s_plugin_ProcessEngine_col_actions = 'Actions';
+
+# Process timeline
+$s_plugin_ProcessEngine_process_timeline = 'Process Timeline';
+$s_plugin_ProcessEngine_no_process_data = 'No process data found for this issue.';
+
+# Flow Designer
+$s_plugin_ProcessEngine_flow_designer_title = 'Flow Designer';
+$s_plugin_ProcessEngine_flow_list_title = 'Flow List';
+$s_plugin_ProcessEngine_new_flow = 'New Flow';
+$s_plugin_ProcessEngine_flow_name = 'Flow Name';
+$s_plugin_ProcessEngine_flow_description = 'Description';
+$s_plugin_ProcessEngine_flow_status_draft = 'Draft';
+$s_plugin_ProcessEngine_flow_status_pending = 'Pending Approval';
+$s_plugin_ProcessEngine_flow_status_active = 'Active';
+$s_plugin_ProcessEngine_btn_save = 'Save';
+$s_plugin_ProcessEngine_btn_validate = 'Validate';
+$s_plugin_ProcessEngine_btn_publish = 'Publish';
+$s_plugin_ProcessEngine_btn_add_step = 'Add Step';
+$s_plugin_ProcessEngine_btn_delete = 'Delete';
+$s_plugin_ProcessEngine_btn_edit = 'Edit';
+$s_plugin_ProcessEngine_btn_back = 'Back';
+
+# Step properties
+$s_plugin_ProcessEngine_step_name = 'Step Name';
+$s_plugin_ProcessEngine_step_department = 'Department';
+$s_plugin_ProcessEngine_step_sla_hours = 'SLA (Hours)';
+$s_plugin_ProcessEngine_step_role = 'Role';
+$s_plugin_ProcessEngine_step_mantis_status = 'MantisBT Status';
+
+# Departments
+$s_plugin_ProcessEngine_dept_sales = 'Sales';
+$s_plugin_ProcessEngine_dept_pricing = 'Pricing';
+$s_plugin_ProcessEngine_dept_sales_ops = 'Sales Operations';
+$s_plugin_ProcessEngine_dept_procurement = 'Procurement';
+$s_plugin_ProcessEngine_dept_rnd = 'R&D';
+$s_plugin_ProcessEngine_dept_management = 'Management';
+$s_plugin_ProcessEngine_dept_quality = 'Quality';
+
+# Validation messages
+$s_plugin_ProcessEngine_validation_success = 'Flow validation successful.';
+$s_plugin_ProcessEngine_validation_no_start = 'Flow must have exactly one start node.';
+$s_plugin_ProcessEngine_validation_no_end = 'Flow must have at least one end node.';
+$s_plugin_ProcessEngine_validation_cycle = 'Cycle detected in the flow.';
+$s_plugin_ProcessEngine_validation_unreachable = 'Some nodes are unreachable from the start node.';
+$s_plugin_ProcessEngine_validation_multiple_start = 'Only one start node is allowed.';
+
+# SLA
+$s_plugin_ProcessEngine_sla_normal = 'Normal';
+$s_plugin_ProcessEngine_sla_warning = 'Warning';
+$s_plugin_ProcessEngine_sla_exceeded = 'Exceeded';
+$s_plugin_ProcessEngine_sla_check = 'SLA Check';
+$s_plugin_ProcessEngine_sla_dashboard = 'SLA Status';
+$s_plugin_ProcessEngine_bottlenecks = 'Show Bottlenecks';
+
+# Escalation
+$s_plugin_ProcessEngine_escalation_warning_subject = '[MantisBT] SLA Warning - Issue #%d';
+$s_plugin_ProcessEngine_escalation_warning_body = 'Issue #%1$d step "%2$s" has reached 80%% of its SLA time. Remaining: %3$s hours.';
+$s_plugin_ProcessEngine_escalation_exceeded_subject = '[MantisBT] SLA Exceeded - Issue #%d';
+$s_plugin_ProcessEngine_escalation_exceeded_body = 'Issue #%1$d step "%2$s" has exceeded its SLA time. Overdue by: %3$s hours.';
+$s_plugin_ProcessEngine_escalation_level1_subject = '[MantisBT] Escalation Level 1 - Issue #%d';
+$s_plugin_ProcessEngine_escalation_level1_body = 'Issue #%1$d step "%2$s" has exceeded 1.5x its SLA time. Manager intervention required.';
+$s_plugin_ProcessEngine_escalation_level2_subject = '[MantisBT] Escalation Level 2 - Issue #%d';
+$s_plugin_ProcessEngine_escalation_level2_body = 'Issue #%1$d step "%2$s" has exceeded 2x its SLA time. Urgent intervention required.';
+
+# Config page
+$s_plugin_ProcessEngine_config_title = 'Process Engine Configuration';
+$s_plugin_ProcessEngine_config_manage_threshold = 'Management Access Level';
+$s_plugin_ProcessEngine_config_view_threshold = 'View Access Level';
+$s_plugin_ProcessEngine_config_sla_warning_percent = 'SLA Warning Percentage';
+$s_plugin_ProcessEngine_config_business_hours_start = 'Business Hours Start';
+$s_plugin_ProcessEngine_config_business_hours_end = 'Business Hours End';
+$s_plugin_ProcessEngine_config_working_days = 'Working Days';
+$s_plugin_ProcessEngine_config_saved = 'Configuration saved.';
+$s_plugin_ProcessEngine_config_working_days_help = 'Comma-separated day numbers (1=Monday, 7=Sunday)';
+$s_plugin_ProcessEngine_config_departments = 'Departments';
+$s_plugin_ProcessEngine_config_departments_help = 'Comma-separated department names. Leave empty to allow free-form entry.';
+
+# Misc
+$s_plugin_ProcessEngine_hours = 'hours';
+$s_plugin_ProcessEngine_days = 'days';
+$s_plugin_ProcessEngine_no_data = 'No data found.';
+$s_plugin_ProcessEngine_confirm_delete = 'Are you sure you want to delete?';
+$s_plugin_ProcessEngine_published_success = 'Flow published successfully.';
+$s_plugin_ProcessEngine_save_success = 'Saved successfully.';
+$s_plugin_ProcessEngine_seed_data = 'Load Sample Data';
+$s_plugin_ProcessEngine_seed_success = 'Sample data loaded successfully.';
+
+# Project and process
+$s_plugin_ProcessEngine_flow_project = 'Project';
+$s_plugin_ProcessEngine_all_projects = 'All Projects';
+$s_plugin_ProcessEngine_process_started = 'Process started';
+$s_plugin_ProcessEngine_out_of_flow_transition = 'Out-of-flow transition';
+
+# Auto assignment
+$s_plugin_ProcessEngine_step_handler = 'Responsible Person';
+$s_plugin_ProcessEngine_no_auto_assign = 'No auto assignment';
+$s_plugin_ProcessEngine_auto_handler_assigned = 'Auto assignment: %s has been assigned as responsible.';
+
+# Process info panel
+$s_plugin_ProcessEngine_process_info = 'Process Info';
+$s_plugin_ProcessEngine_current_step = 'Current Step';
+$s_plugin_ProcessEngine_step_progress = 'Progress';
+$s_plugin_ProcessEngine_step_of = 'Step %d / %d';
+$s_plugin_ProcessEngine_sla_remaining = 'SLA Remaining';
+$s_plugin_ProcessEngine_sla_overdue = 'Overdue';
+$s_plugin_ProcessEngine_responsible = 'Responsible';
+
+# Dashboard extra columns
+$s_plugin_ProcessEngine_all_departments = 'All Departments';
+$s_plugin_ProcessEngine_col_handler = 'Responsible';
+$s_plugin_ProcessEngine_col_progress = 'Progress';
+
+# Department management
+$s_plugin_ProcessEngine_dept_other = 'Other (Free Entry)';
+$s_plugin_ProcessEngine_dept_custom_placeholder = 'Type department name...';
+
+# Subprocess (Hierarchical Process Engine)
+$s_plugin_ProcessEngine_subprocess = 'Subprocess';
+$s_plugin_ProcessEngine_subprocess_step = 'Subprocess Step';
+$s_plugin_ProcessEngine_step_type = 'Step Type';
+$s_plugin_ProcessEngine_step_type_normal = 'Normal';
+$s_plugin_ProcessEngine_step_type_subprocess = 'Subprocess';
+$s_plugin_ProcessEngine_child_flow = 'Subprocess Flow';
+$s_plugin_ProcessEngine_child_project = 'Target Project';
+$s_plugin_ProcessEngine_wait_mode = 'Wait Mode';
+$s_plugin_ProcessEngine_wait_mode_all = 'Wait for All';
+$s_plugin_ProcessEngine_wait_mode_any = 'Wait for Any';
+$s_plugin_ProcessEngine_process_tree = 'Process Tree';
+$s_plugin_ProcessEngine_view_process_tree = 'View Process Tree';
+$s_plugin_ProcessEngine_parent_process = 'Parent Process';
+$s_plugin_ProcessEngine_child_processes = 'Child Processes';
+$s_plugin_ProcessEngine_instance_status = 'Process Status';
+$s_plugin_ProcessEngine_instance_active = 'Active';
+$s_plugin_ProcessEngine_instance_waiting = 'Waiting';
+$s_plugin_ProcessEngine_instance_completed = 'Completed';
+$s_plugin_ProcessEngine_instance_cancelled = 'Cancelled';
+$s_plugin_ProcessEngine_migrate_data = 'Migrate Data';
+$s_plugin_ProcessEngine_migrate_success = '%d process records migrated successfully.';
+$s_plugin_ProcessEngine_migrate_none = 'No data found to migrate.';
+$s_plugin_ProcessEngine_transition_label = 'Transition Label';
+$s_plugin_ProcessEngine_condition_type = 'Condition Type';
+$s_plugin_ProcessEngine_condition_none = 'Unconditional';
+$s_plugin_ProcessEngine_condition_field_equals = 'Field Equals';
+$s_plugin_ProcessEngine_condition_status_is = 'Status Equals';
+$s_plugin_ProcessEngine_subprocess_cycle_detected = 'Cycle detected in subprocess chain.';
+$s_plugin_ProcessEngine_subprocess_invalid_flow = 'Invalid subprocess flow.';
+$s_plugin_ProcessEngine_subprocess_invalid_project = 'Invalid target project.';
+$s_plugin_ProcessEngine_col_subprocess = 'Subprocesses';
+$s_plugin_ProcessEngine_pending_subprocesses = 'Pending Subprocesses';
+
+# Process Tree (Phase 4)
+$s_plugin_ProcessEngine_tree_restricted_access = 'Access restricted';
+$s_plugin_ProcessEngine_tree_no_tree = 'No process tree found for this issue.';
+$s_plugin_ProcessEngine_tree_root = 'Root Process';
+$s_plugin_ProcessEngine_tree_depth = 'Depth';
+$s_plugin_ProcessEngine_parent_link = 'Parent Process: #%d — %s';
+$s_plugin_ProcessEngine_child_summary = '%d/%d completed';
+$s_plugin_ProcessEngine_col_tree = 'Tree';
+$s_plugin_ProcessEngine_subprocess_of = 'Subprocess of #%d';
+
+# Branching and Conditional Transitions (Phase 5)
+$s_plugin_ProcessEngine_condition_field = 'Condition Field';
+$s_plugin_ProcessEngine_condition_value = 'Condition Value';
+$s_plugin_ProcessEngine_branching_auto = 'Auto branching: moved to step %s based on condition';
+$s_plugin_ProcessEngine_sla_tree_summary = 'Tree SLA Summary';
+$s_plugin_ProcessEngine_sla_tree_total = 'Total Active SLA';
+$s_plugin_ProcessEngine_sla_tree_worst = 'Worst Status';
+
+# Dashboard Actions (Phase 7)
+$s_plugin_ProcessEngine_config_action_threshold = 'Action Access Level';
+$s_plugin_ProcessEngine_config_action_threshold_help = 'Minimum access level required to advance steps and refresh SLA from the dashboard';
+$s_plugin_ProcessEngine_action_advance_confirm = 'Are you sure you want to advance this issue to the next step?';
+$s_plugin_ProcessEngine_action_advance_success = 'Issue successfully advanced to the next step.';
+$s_plugin_ProcessEngine_action_advance_no_transition = 'No valid transition found from this step.';
+$s_plugin_ProcessEngine_action_sla_refreshed = 'SLA status has been refreshed.';
+$s_plugin_ProcessEngine_action_invalid = 'Invalid action.';
+
+# Phase 8: Subprocess Improvements
+$s_plugin_ProcessEngine_badge_active = 'active';
+$s_plugin_ProcessEngine_badge_waiting = 'waiting';
+$s_plugin_ProcessEngine_subprocess_waiting_label = 'Subprocess Waiting';
+$s_plugin_ProcessEngine_child_detail_summary = '%d/%d completed, %d active, %d waiting';
+$s_plugin_ProcessEngine_tree_sla_info = 'SLA Info';
+
+# Phase 9: Production Readiness
+$s_plugin_ProcessEngine_btn_cancel = 'Cancel';
+$s_plugin_ProcessEngine_condition_field_label = 'Field / Status';
+$s_plugin_ProcessEngine_condition_value_label = 'Value';
+$s_plugin_ProcessEngine_flow_delete_blocked = 'Cannot delete this flow because there are active processes linked to it.';
+$s_plugin_ProcessEngine_flow_edit_blocked = 'Active flows cannot be edited. Set to draft status first.';

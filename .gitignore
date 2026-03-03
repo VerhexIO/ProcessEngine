@@ -1,0 +1,36 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker (yerel geliştirme ortamı)
+docker-compose.yml
+docker/
+
+# Claude AI
+.claude/
+CLAUDE.md
+
+# Yerel dokümanlar
+Yerel_Gelistirme_Rehberi_v1.docx
+TEST_PLANI.md
+
+# İç test betikleri
+scripts/test_scenario.php
+scripts/test_seed.php
+
+# Logs
+*.log
+
+# Screenshots / test artifacts
+*.png
+
+# Dependencies
+vendor/
+node_modules/
