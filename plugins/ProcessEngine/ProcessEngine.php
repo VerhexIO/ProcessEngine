@@ -25,7 +25,7 @@ class ProcessEnginePlugin extends MantisPlugin {
 
         $this->author  = 'VerhexIO';
         $this->contact = 'info@verhex.io';
-        $this->url     = 'https://github.com/VerhexIO/mantis.process.engine';
+        $this->url     = 'https://github.com/VerhexIO/ProcessEngine';
     }
 
     /**
