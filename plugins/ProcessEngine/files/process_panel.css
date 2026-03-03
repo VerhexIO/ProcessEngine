@@ -613,3 +613,119 @@
     border-radius: 3px;
     font-size: 12px;
 }
+
+/* ---- Faz 12: İlerleme Ağacı (Dikey) ---- */
+.pe-progress-tree {
+    padding: 10px 0;
+}
+.pe-progress-node {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    border-left: 3px solid #ddd;
+    padding-left: 14px;
+    margin-left: 10px;
+}
+.pe-progress-node--completed {
+    border-left-color: #27ae60;
+}
+.pe-progress-node--current {
+    border-left-color: #3498db;
+}
+.pe-progress-node--pending {
+    border-left-color: #ddd;
+}
+.pe-progress-node-indicator {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+.pe-progress-node--completed .pe-progress-node-indicator { color: #27ae60; }
+.pe-progress-node--current .pe-progress-node-indicator { color: #3498db; }
+.pe-progress-node--pending .pe-progress-node-indicator { color: #bdc3c7; }
+.pe-progress-node-content {
+    display: flex;
+    flex-direction: column;
+}
+.pe-progress-node-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+}
+.pe-progress-node-dept {
+    font-size: 11px;
+    color: #888;
+    margin-top: 1px;
+}
+.pe-progress-branch {
+    margin-left: 34px;
+    padding: 4px 0 4px 10px;
+    border-left: 2px dashed #8e44ad;
+}
+.pe-progress-child {
+    padding: 3px 0;
+    font-size: 12px;
+    color: #555;
+}
+.pe-progress-child-icon {
+    color: #8e44ad;
+    margin-right: 4px;
+}
+.pe-progress-child--active .pe-progress-child-label { color: #3498db; }
+.pe-progress-child--completed .pe-progress-child-label { color: #27ae60; }
+.pe-progress-child--waiting .pe-progress-child-label { color: #f39c12; }
+.pe-progress-child--cancelled .pe-progress-child-label { color: #95a5a6; }
+
+/* ---- Faz 12: step_instructions Box ---- */
+.pe-instructions-box {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: #eaf6ff;
+    border: 1px solid #b8daff;
+    border-radius: 4px;
+}
+.pe-instructions-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3498db;
+    margin-bottom: 4px;
+}
+.pe-instructions-label .fa {
+    margin-right: 4px;
+}
+.pe-instructions-text {
+    font-size: 13px;
+    color: #333;
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+/* ---- Faz 12: Modal Instructions ---- */
+.pe-modal-instructions {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: #eaf6ff;
+    border: 1px solid #b8daff;
+    border-radius: 4px;
+}
+
+/* ---- Faz 12: Subprocess Kılavuz ---- */
+.pe-subprocess-guide {
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #555;
+}
+.pe-subprocess-guide ul {
+    margin: 4px 0 0 16px;
+    padding: 0;
+}
+.pe-subprocess-guide li {
+    margin-bottom: 3px;
+}
+
+/* ---- Faz 12: SLA Global Buton ---- */
+.pe-sla-global-check {
+    margin-bottom: 10px;
+}

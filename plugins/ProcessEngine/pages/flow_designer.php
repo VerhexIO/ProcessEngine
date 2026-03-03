@@ -428,10 +428,9 @@ if( $t_flow_id === 0 ) {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="pe-modal-note-required" />
-                        <?php echo plugin_lang_get( 'note_required_label' ); ?>
-                    </label>
+                    <label><?php echo plugin_lang_get( 'step_instructions_label' ); ?></label>
+                    <textarea id="pe-modal-step-instructions" class="form-control input-sm" rows="3"
+                        placeholder="<?php echo plugin_lang_get( 'step_instructions_placeholder' ); ?>"></textarea>
                 </div>
             </div>
             <div class="modal-footer">

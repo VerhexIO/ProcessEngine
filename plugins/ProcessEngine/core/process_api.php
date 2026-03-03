@@ -688,6 +688,461 @@ function process_get_valid_transitions( $p_flow_id, $p_step_id, $p_bug_id ) {
     return $t_valid;
 }
 
+// ============================================================
+// Faz 12: Rapor API Fonksiyonları
+// ============================================================
+
+/**
+ * Get report data with filtering and pagination.
+ *
+ * @param array $p_filters Associative array with filter keys
+ * @return array ['rows' => array, 'total' => int, 'summary' => array]
+ */
+function process_get_report_data( $p_filters ) {
+    $t_log_table = plugin_table( 'log' );
+    $t_step_table = plugin_table( 'step' );
+    $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_flow_table = plugin_table( 'flow_definition' );
+    $t_inst_table = plugin_table( 'process_instance' );
+    $t_bug_table = db_get_table( 'bug' );
+
+    $t_date_from   = isset( $p_filters['date_from'] ) ? (int) $p_filters['date_from'] : 0;
+    $t_date_to     = isset( $p_filters['date_to'] ) ? (int) $p_filters['date_to'] : 0;
+    $t_project_id  = isset( $p_filters['project_id'] ) ? (int) $p_filters['project_id'] : 0;
+    $t_department  = isset( $p_filters['department'] ) ? trim( $p_filters['department'] ) : '';
+    $t_flow_id     = isset( $p_filters['flow_id'] ) ? (int) $p_filters['flow_id'] : 0;
+    $t_status_filter = isset( $p_filters['status'] ) ? trim( $p_filters['status'] ) : '';
+    $t_page        = isset( $p_filters['page'] ) ? max( 1, (int) $p_filters['page'] ) : 1;
+    $t_per_page    = isset( $p_filters['per_page'] ) ? max( 1, (int) $p_filters['per_page'] ) : 25;
+
+    // Proje erişim kontrolü
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible ) ) {
+        return array( 'rows' => array(), 'total' => 0, 'summary' => array() );
+    }
+    $t_project_ids = array_map( 'intval', $t_accessible );
+    if( $t_project_id > 0 && in_array( $t_project_id, $t_project_ids ) ) {
+        $t_project_ids = array( $t_project_id );
+    }
+    $t_project_in = implode( ',', $t_project_ids );
+
+    // Instance bazlı sorgu — her instance bir satır
+    $t_where = "WHERE b.project_id IN ($t_project_in)";
+    $t_params = array();
+
+    if( $t_date_from > 0 ) {
+        $t_where .= " AND pi.created_at >= " . db_param();
+        $t_params[] = $t_date_from;
+    }
+    if( $t_date_to > 0 ) {
+        $t_where .= " AND pi.created_at <= " . db_param();
+        $t_params[] = $t_date_to;
+    }
+    if( $t_flow_id > 0 ) {
+        $t_where .= " AND pi.flow_id = " . db_param();
+        $t_params[] = $t_flow_id;
+    }
+
+    // SLA filtresi için sub-query
+    $t_sla_join = "LEFT JOIN (
+        SELECT bug_id, sla_status, started_at, completed_at,
+            (CASE WHEN completed_at IS NOT NULL THEN completed_at - started_at ELSE NULL END) AS duration_sec
+        FROM $t_sla_table st1
+        WHERE st1.id = (SELECT MAX(st2.id) FROM $t_sla_table st2 WHERE st2.bug_id = st1.bug_id)
+    ) sla ON sla.bug_id = pi.bug_id";
+
+    // Durum filtresi
+    if( $t_status_filter === 'active' ) {
+        $t_where .= " AND pi.status IN ('ACTIVE', 'WAITING')";
+    } else if( $t_status_filter === 'completed' ) {
+        $t_where .= " AND pi.status = 'COMPLETED'";
+    } else if( $t_status_filter === 'sla_exceeded' ) {
+        $t_where .= " AND sla.sla_status = 'EXCEEDED'";
+    }
+
+    // Toplam sayı
+    db_param_push();
+    $t_count_query = "SELECT COUNT(DISTINCT pi.id) AS cnt
+        FROM $t_inst_table pi
+        INNER JOIN $t_bug_table b ON pi.bug_id = b.id
+        $t_sla_join
+        LEFT JOIN $t_step_table s ON pi.current_step_id = s.id
+        $t_where";
+    if( $t_department !== '' ) {
+        $t_count_query .= " AND s.department = " . db_param();
+        $t_count_params = array_merge( $t_params, array( $t_department ) );
+    } else {
+        $t_count_params = $t_params;
+    }
+    $t_count_result = db_query( $t_count_query, $t_count_params );
+    $t_count_row = db_fetch_array( $t_count_result );
+    $t_total = (int) $t_count_row['cnt'];
+
+    // Ana veri sorgusu
+    $t_offset = ( $t_page - 1 ) * $t_per_page;
+    db_param_push();
+    $t_main_query = "SELECT pi.*, b.summary, b.handler_id, b.status AS bug_status,
+            COALESCE(s.name, '') AS step_name, COALESCE(s.department, '') AS department,
+            COALESCE(f.name, '') AS flow_name,
+            sla.sla_status, sla.duration_sec
+        FROM $t_inst_table pi
+        INNER JOIN $t_bug_table b ON pi.bug_id = b.id
+        $t_sla_join
+        LEFT JOIN $t_step_table s ON pi.current_step_id = s.id
+        LEFT JOIN $t_flow_table f ON pi.flow_id = f.id
+        $t_where";
+    if( $t_department !== '' ) {
+        $t_main_query .= " AND s.department = " . db_param();
+        $t_main_params = array_merge( $t_params, array( $t_department ) );
+    } else {
+        $t_main_params = $t_params;
+    }
+    $t_main_query .= " ORDER BY pi.created_at DESC LIMIT $t_per_page OFFSET $t_offset";
+    $t_result = db_query( $t_main_query, $t_main_params );
+
+    $t_rows = array();
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_bug_id = (int) $t_row['bug_id'];
+        $t_handler_name = '';
+        if( (int) $t_row['handler_id'] > 0 && user_exists( (int) $t_row['handler_id'] ) ) {
+            $t_handler_name = user_get_name( (int) $t_row['handler_id'] );
+        }
+
+        $t_duration_hrs = null;
+        if( $t_row['duration_sec'] !== null ) {
+            $t_duration_hrs = round( (float) $t_row['duration_sec'] / 3600, 1 );
+        }
+
+        // Bekleme nedeni
+        $t_wait_reason = '';
+        if( $t_row['status'] === 'WAITING' ) {
+            db_param_push();
+            $t_child_q = "SELECT ci.bug_id FROM $t_inst_table ci
+                WHERE ci.parent_instance_id = " . db_param() . " AND ci.status IN ('ACTIVE', 'WAITING')";
+            $t_child_r = db_query( $t_child_q, array( (int) $t_row['id'] ) );
+            $t_waiting_for = array();
+            while( $t_child_row = db_fetch_array( $t_child_r ) ) {
+                $t_waiting_for[] = '#' . $t_child_row['bug_id'];
+            }
+            if( !empty( $t_waiting_for ) ) {
+                $t_wait_reason = implode( ', ', $t_waiting_for );
+            }
+        }
+
+        $t_rows[] = array(
+            'bug_id'        => $t_bug_id,
+            'summary'       => $t_row['summary'],
+            'flow_name'     => $t_row['flow_name'],
+            'step_name'     => $t_row['step_name'],
+            'department'    => $t_row['department'],
+            'handler_name'  => $t_handler_name,
+            'instance_status' => $t_row['status'],
+            'bug_status'    => (int) $t_row['bug_status'],
+            'sla_status'    => $t_row['sla_status'] ? $t_row['sla_status'] : 'NORMAL',
+            'duration_hrs'  => $t_duration_hrs,
+            'wait_reason'   => $t_wait_reason,
+            'created_at'    => (int) $t_row['created_at'],
+        );
+    }
+
+    // Özet istatistikler
+    db_param_push();
+    $t_summary_query = "SELECT
+            COUNT(DISTINCT pi.id) AS total_count,
+            SUM(CASE WHEN pi.status IN ('ACTIVE','WAITING') THEN 1 ELSE 0 END) AS active_count,
+            AVG(CASE WHEN sla.duration_sec IS NOT NULL AND sla.duration_sec > 0 THEN sla.duration_sec ELSE NULL END) AS avg_duration_sec
+        FROM $t_inst_table pi
+        INNER JOIN $t_bug_table b ON pi.bug_id = b.id
+        $t_sla_join
+        LEFT JOIN $t_step_table s ON pi.current_step_id = s.id
+        $t_where";
+    if( $t_department !== '' ) {
+        $t_summary_query .= " AND s.department = " . db_param();
+        $t_summary_params = array_merge( $t_params, array( $t_department ) );
+    } else {
+        $t_summary_params = $t_params;
+    }
+    $t_summary_result = db_query( $t_summary_query, $t_summary_params );
+    $t_summary_row = db_fetch_array( $t_summary_result );
+
+    // SLA uyum oranı
+    db_param_push();
+    $t_sla_comp_query = "SELECT
+            COUNT(*) AS total_sla,
+            SUM(CASE WHEN sla.sla_status != 'EXCEEDED' THEN 1 ELSE 0 END) AS compliant
+        FROM $t_inst_table pi
+        INNER JOIN $t_bug_table b ON pi.bug_id = b.id
+        $t_sla_join
+        LEFT JOIN $t_step_table s ON pi.current_step_id = s.id
+        $t_where AND sla.sla_status IS NOT NULL";
+    if( $t_department !== '' ) {
+        $t_sla_comp_query .= " AND s.department = " . db_param();
+        $t_sla_comp_params = array_merge( $t_params, array( $t_department ) );
+    } else {
+        $t_sla_comp_params = $t_params;
+    }
+    $t_sla_comp_result = db_query( $t_sla_comp_query, $t_sla_comp_params );
+    $t_sla_comp_row = db_fetch_array( $t_sla_comp_result );
+    $t_sla_compliance = 0;
+    if( (int) $t_sla_comp_row['total_sla'] > 0 ) {
+        $t_sla_compliance = round( (int) $t_sla_comp_row['compliant'] / (int) $t_sla_comp_row['total_sla'] * 100 );
+    }
+
+    $t_avg_hrs = 0;
+    if( $t_summary_row['avg_duration_sec'] !== null ) {
+        $t_avg_hrs = round( (float) $t_summary_row['avg_duration_sec'] / 3600, 1 );
+    }
+
+    $t_summary = array(
+        'total'          => (int) $t_summary_row['total_count'],
+        'active'         => (int) $t_summary_row['active_count'],
+        'avg_duration'   => $t_avg_hrs,
+        'sla_compliance' => $t_sla_compliance,
+    );
+
+    return array( 'rows' => $t_rows, 'total' => $t_total, 'summary' => $t_summary );
+}
+
+/**
+ * Get department performance statistics for charts.
+ *
+ * @param array $p_filters Same filter array as process_get_report_data
+ * @return array Array of department performance data
+ */
+function process_get_department_performance( $p_filters ) {
+    $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_step_table = plugin_table( 'step' );
+    $t_inst_table = plugin_table( 'process_instance' );
+    $t_bug_table = db_get_table( 'bug' );
+
+    $t_date_from  = isset( $p_filters['date_from'] ) ? (int) $p_filters['date_from'] : 0;
+    $t_date_to    = isset( $p_filters['date_to'] ) ? (int) $p_filters['date_to'] : 0;
+    $t_project_id = isset( $p_filters['project_id'] ) ? (int) $p_filters['project_id'] : 0;
+    $t_flow_id    = isset( $p_filters['flow_id'] ) ? (int) $p_filters['flow_id'] : 0;
+
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible ) ) {
+        return array();
+    }
+    $t_project_ids = array_map( 'intval', $t_accessible );
+    if( $t_project_id > 0 && in_array( $t_project_id, $t_project_ids ) ) {
+        $t_project_ids = array( $t_project_id );
+    }
+    $t_project_in = implode( ',', $t_project_ids );
+
+    $t_where = "WHERE b.project_id IN ($t_project_in) AND s.department != ''";
+    $t_params = array();
+
+    if( $t_date_from > 0 ) {
+        $t_where .= " AND st.started_at >= " . db_param();
+        $t_params[] = $t_date_from;
+    }
+    if( $t_date_to > 0 ) {
+        $t_where .= " AND st.started_at <= " . db_param();
+        $t_params[] = $t_date_to;
+    }
+    if( $t_flow_id > 0 ) {
+        $t_where .= " AND st.flow_id = " . db_param();
+        $t_params[] = $t_flow_id;
+    }
+
+    db_param_push();
+    $t_query = "SELECT s.department,
+            COUNT(*) AS total_steps,
+            SUM(CASE WHEN st.completed_at IS NOT NULL THEN 1 ELSE 0 END) AS completed_steps,
+            AVG(CASE WHEN st.completed_at IS NOT NULL AND st.completed_at > st.started_at
+                THEN st.completed_at - st.started_at ELSE NULL END) AS avg_duration_sec,
+            SUM(CASE WHEN st.sla_status != 'EXCEEDED' AND st.completed_at IS NOT NULL THEN 1 ELSE 0 END) AS compliant,
+            SUM(CASE WHEN st.completed_at IS NULL THEN 1 ELSE 0 END) AS active_count
+        FROM $t_sla_table st
+        INNER JOIN $t_step_table s ON st.step_id = s.id
+        INNER JOIN $t_bug_table b ON st.bug_id = b.id
+        $t_where
+        GROUP BY s.department
+        ORDER BY s.department";
+
+    $t_result = db_query( $t_query, $t_params );
+    $t_departments = array();
+
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_total_completed = (int) $t_row['completed_steps'];
+        $t_compliant = (int) $t_row['compliant'];
+        $t_sla_pct = ( $t_total_completed > 0 ) ? round( $t_compliant / $t_total_completed * 100 ) : 0;
+        $t_avg_hrs = ( $t_row['avg_duration_sec'] !== null ) ? round( (float) $t_row['avg_duration_sec'] / 3600, 1 ) : 0;
+
+        $t_departments[] = array(
+            'department'       => $t_row['department'],
+            'total_steps'      => (int) $t_row['total_steps'],
+            'completed_steps'  => $t_total_completed,
+            'avg_duration_hrs' => $t_avg_hrs,
+            'sla_compliance'   => $t_sla_pct,
+            'active_count'     => (int) $t_row['active_count'],
+        );
+    }
+
+    return $t_departments;
+}
+
+/**
+ * Get step duration statistics for charts.
+ *
+ * @param array $p_filters Same filter array as process_get_report_data
+ * @return array Array of step duration stats
+ */
+function process_get_step_duration_stats( $p_filters ) {
+    $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_step_table = plugin_table( 'step' );
+    $t_flow_table = plugin_table( 'flow_definition' );
+    $t_bug_table = db_get_table( 'bug' );
+
+    $t_date_from  = isset( $p_filters['date_from'] ) ? (int) $p_filters['date_from'] : 0;
+    $t_date_to    = isset( $p_filters['date_to'] ) ? (int) $p_filters['date_to'] : 0;
+    $t_project_id = isset( $p_filters['project_id'] ) ? (int) $p_filters['project_id'] : 0;
+    $t_flow_id    = isset( $p_filters['flow_id'] ) ? (int) $p_filters['flow_id'] : 0;
+
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible ) ) {
+        return array();
+    }
+    $t_project_ids = array_map( 'intval', $t_accessible );
+    if( $t_project_id > 0 && in_array( $t_project_id, $t_project_ids ) ) {
+        $t_project_ids = array( $t_project_id );
+    }
+    $t_project_in = implode( ',', $t_project_ids );
+
+    $t_where = "WHERE b.project_id IN ($t_project_in) AND st.completed_at IS NOT NULL AND st.completed_at > st.started_at";
+    $t_params = array();
+
+    if( $t_date_from > 0 ) {
+        $t_where .= " AND st.started_at >= " . db_param();
+        $t_params[] = $t_date_from;
+    }
+    if( $t_date_to > 0 ) {
+        $t_where .= " AND st.started_at <= " . db_param();
+        $t_params[] = $t_date_to;
+    }
+    if( $t_flow_id > 0 ) {
+        $t_where .= " AND st.flow_id = " . db_param();
+        $t_params[] = $t_flow_id;
+    }
+
+    db_param_push();
+    $t_query = "SELECT s.name AS step_name, COALESCE(f.name, '') AS flow_name,
+            AVG(st.completed_at - st.started_at) AS avg_sec,
+            MIN(st.completed_at - st.started_at) AS min_sec,
+            MAX(st.completed_at - st.started_at) AS max_sec,
+            COUNT(*) AS total_completed,
+            SUM(CASE WHEN st.sla_status = 'EXCEEDED' THEN 1 ELSE 0 END) AS exceeded_count
+        FROM $t_sla_table st
+        INNER JOIN $t_step_table s ON st.step_id = s.id
+        INNER JOIN $t_bug_table b ON st.bug_id = b.id
+        LEFT JOIN $t_flow_table f ON st.flow_id = f.id
+        $t_where
+        GROUP BY s.id, s.name, f.name
+        ORDER BY avg_sec DESC";
+
+    $t_result = db_query( $t_query, $t_params );
+    $t_stats = array();
+
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_total = (int) $t_row['total_completed'];
+        $t_exceeded = (int) $t_row['exceeded_count'];
+        $t_exceeded_pct = ( $t_total > 0 ) ? round( $t_exceeded / $t_total * 100 ) : 0;
+
+        $t_stats[] = array(
+            'step_name'        => $t_row['step_name'],
+            'flow_name'        => $t_row['flow_name'],
+            'avg_duration_hrs' => round( (float) $t_row['avg_sec'] / 3600, 1 ),
+            'min_duration_hrs' => round( (float) $t_row['min_sec'] / 3600, 1 ),
+            'max_duration_hrs' => round( (float) $t_row['max_sec'] / 3600, 1 ),
+            'total_completed'  => $t_total,
+            'sla_exceeded_pct' => $t_exceeded_pct,
+        );
+    }
+
+    return $t_stats;
+}
+
+/**
+ * Get monthly trend data for chart.
+ *
+ * @param array $p_filters Same filter array
+ * @return array Monthly trend data
+ */
+function process_get_monthly_trend( $p_filters ) {
+    $t_inst_table = plugin_table( 'process_instance' );
+    $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_bug_table = db_get_table( 'bug' );
+
+    $t_project_id = isset( $p_filters['project_id'] ) ? (int) $p_filters['project_id'] : 0;
+
+    $t_user_id = auth_get_current_user_id();
+    $t_accessible = user_get_accessible_projects( $t_user_id );
+    if( empty( $t_accessible ) ) {
+        return array();
+    }
+    $t_project_ids = array_map( 'intval', $t_accessible );
+    if( $t_project_id > 0 && in_array( $t_project_id, $t_project_ids ) ) {
+        $t_project_ids = array( $t_project_id );
+    }
+    $t_project_in = implode( ',', $t_project_ids );
+
+    // Son 12 ay — tek sorgu ile GROUP BY
+    $t_twelve_months_ago = mktime( 0, 0, 0, date( 'n' ) - 11, 1, date( 'Y' ) );
+
+    // Süreç sayıları — aylık grupla
+    db_param_push();
+    $t_q = "SELECT YEAR(FROM_UNIXTIME(pi.created_at)) AS yr,
+                   MONTH(FROM_UNIXTIME(pi.created_at)) AS mo,
+                   COUNT(*) AS cnt
+            FROM $t_inst_table pi
+            INNER JOIN $t_bug_table b ON pi.bug_id = b.id
+            WHERE b.project_id IN ($t_project_in)
+            AND pi.created_at >= " . db_param() . "
+            GROUP BY yr, mo ORDER BY yr, mo";
+    $t_r = db_query( $t_q, array( $t_twelve_months_ago ) );
+    $t_count_map = array();
+    while( $t_row = db_fetch_array( $t_r ) ) {
+        $t_key = sprintf( '%04d-%02d', (int) $t_row['yr'], (int) $t_row['mo'] );
+        $t_count_map[$t_key] = (int) $t_row['cnt'];
+    }
+
+    // SLA aşım sayıları — aylık grupla
+    db_param_push();
+    $t_sla_q = "SELECT YEAR(FROM_UNIXTIME(st.started_at)) AS yr,
+                       MONTH(FROM_UNIXTIME(st.started_at)) AS mo,
+                       COUNT(*) AS cnt
+                FROM $t_sla_table st
+                INNER JOIN $t_bug_table b ON st.bug_id = b.id
+                WHERE b.project_id IN ($t_project_in)
+                AND st.sla_status = 'EXCEEDED'
+                AND st.started_at >= " . db_param() . "
+                GROUP BY yr, mo ORDER BY yr, mo";
+    $t_sla_r = db_query( $t_sla_q, array( $t_twelve_months_ago ) );
+    $t_exceeded_map = array();
+    while( $t_sla_row = db_fetch_array( $t_sla_r ) ) {
+        $t_key = sprintf( '%04d-%02d', (int) $t_sla_row['yr'], (int) $t_sla_row['mo'] );
+        $t_exceeded_map[$t_key] = (int) $t_sla_row['cnt'];
+    }
+
+    // 12 aylık sonuç dizisi oluştur
+    $t_months = array();
+    for( $i = 11; $i >= 0; $i-- ) {
+        $t_month_start = mktime( 0, 0, 0, date( 'n' ) - $i, 1, date( 'Y' ) );
+        $t_label = date( 'Y-m', $t_month_start );
+        $t_months[] = array(
+            'label'    => $t_label,
+            'count'    => isset( $t_count_map[$t_label] ) ? $t_count_map[$t_label] : 0,
+            'exceeded' => isset( $t_exceeded_map[$t_label] ) ? $t_exceeded_map[$t_label] : 0,
+        );
+    }
+
+    return $t_months;
+}
+
 /**
  * Get all tracked bugs with their current step info for the dashboard table.
  *

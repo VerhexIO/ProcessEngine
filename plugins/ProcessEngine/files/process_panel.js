@@ -37,11 +37,11 @@
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 var bugId = this.getAttribute('data-bug-id');
-                var noteRequired = this.getAttribute('data-note-required') === '1';
+                var instructions = this.getAttribute('data-instructions') || '';
                 var currentStep = this.getAttribute('data-current-step') || '';
                 var nextStep = this.getAttribute('data-next-step') || '';
 
-                peOpenAdvanceModal(bugId, noteRequired, currentStep, nextStep);
+                peOpenAdvanceModal(bugId, instructions, currentStep, nextStep);
             });
         });
 
@@ -70,7 +70,7 @@
         });
     }
 
-    function peOpenAdvanceModal(bugId, noteRequired, currentStep, nextStep) {
+    function peOpenAdvanceModal(bugId, instructions, currentStep, nextStep) {
         var overlay = document.getElementById('pe-advance-overlay');
         var modal = document.getElementById('pe-advance-modal');
         if (!overlay || !modal) return;
@@ -78,14 +78,22 @@
         // Modal alanlarını doldur
         var currentEl = document.getElementById('pe-modal-current-step');
         var nextEl = document.getElementById('pe-modal-next-step');
-        var requiredBadge = document.getElementById('pe-modal-required-badge');
-        var noteArea = document.getElementById('pe-modal-note');
+        var instructionsBox = document.getElementById('pe-modal-instructions');
+        var instructionsText = document.getElementById('pe-modal-instructions-text');
         var errorEl = document.getElementById('pe-modal-error');
 
         if (currentEl) currentEl.textContent = currentStep;
         if (nextEl) nextEl.textContent = nextStep;
-        if (requiredBadge) requiredBadge.style.display = noteRequired ? 'inline-block' : 'none';
-        if (noteArea) noteArea.value = '';
+
+        // Talimatlar varsa göster
+        if (instructionsBox && instructionsText) {
+            if (instructions && instructions.trim() !== '') {
+                instructionsText.textContent = instructions;
+                instructionsBox.style.display = 'block';
+            } else {
+                instructionsBox.style.display = 'none';
+            }
+        }
         if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
 
         overlay.style.display = 'block';
@@ -102,19 +110,10 @@
         }
 
         function onConfirm() {
-            var note = noteArea ? noteArea.value.trim() : '';
-            if (noteRequired && note === '') {
-                if (errorEl) {
-                    errorEl.textContent = 'Not alanı zorunludur.';
-                    errorEl.style.display = 'block';
-                }
-                return;
-            }
             closeModal();
-            // İlerletme aksiyonunu çalıştır
             var advanceBtn = document.querySelector('.pe-bugview-advance[data-bug-id="' + bugId + '"]');
             if (advanceBtn) {
-                peDoBugViewAction('advance_step', bugId, advanceBtn, { note: note });
+                peDoBugViewAction('advance_step', bugId, advanceBtn, {});
             }
         }
 
@@ -169,6 +168,10 @@
                 if (xhr.status === 200) {
                     try {
                         var resp = JSON.parse(xhr.responseText);
+                        // CSRF token yenile
+                        if (resp.new_token && tokenEl) {
+                            tokenEl.value = resp.new_token;
+                        }
                         if (resp.success) {
                             window.location.reload();
                         } else {
@@ -206,6 +209,16 @@
                 peDoAction('refresh_sla', bugId, this);
             });
         });
+
+        // Global SLA Kontrol (MANAGER+)
+        var globalSlaBtn = document.querySelector('.pe-sla-global-check');
+        if (globalSlaBtn) {
+            globalSlaBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                // bug_id=0 gönder, action handler bunu kullanmaz
+                peDoAction('global_sla_check', 0, this);
+            });
+        }
     }
 
     function peDoAction(action, bugId, btnEl) {
@@ -236,6 +249,10 @@
                 if (xhr.status === 200) {
                     try {
                         var resp = JSON.parse(xhr.responseText);
+                        // CSRF token yenile
+                        if (resp.new_token && tokenEl) {
+                            tokenEl.value = resp.new_token;
+                        }
                         if (resp.success) {
                             window.location.reload();
                         } else {

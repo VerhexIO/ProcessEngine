@@ -545,8 +545,11 @@ function subprocess_create_child_issue( $p_parent_bug_id, $p_child_flow_id, $p_c
         array( (int) $p_parent_bug_id, $t_child_bug_id, 2 ) // 2 = BUG_REL_PARENT_OF
     );
 
-    // Ebeveyn instance'ı WAITING durumuna getir
-    subprocess_update_instance_status( $p_parent_inst_id, INSTANCE_STATUS_WAITING );
+    // Ebeveyn instance'ı WAITING durumuna getir (zaten WAITING ise tekrar yazmayı atla)
+    $t_parent_inst_check = subprocess_get_instance_by_id( $p_parent_inst_id );
+    if( $t_parent_inst_check !== null && $t_parent_inst_check['status'] !== INSTANCE_STATUS_WAITING ) {
+        subprocess_update_instance_status( $p_parent_inst_id, INSTANCE_STATUS_WAITING );
+    }
 
     // Custom event tetikle
     event_signal( 'EVENT_PROCESSENGINE_CHILD_CREATED', array(

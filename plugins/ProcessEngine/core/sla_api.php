@@ -12,6 +12,28 @@ define( 'SLA_STATUS_WARNING',  'WARNING' );
 define( 'SLA_STATUS_EXCEEDED', 'EXCEEDED' );
 
 /**
+ * Parse a time string (HH:MM or legacy integer) to minutes since midnight.
+ *
+ * @param mixed $p_time_str Time string '07:30' or legacy integer 9
+ * @return int Minutes since midnight (e.g. '07:30' → 450, '18:00' → 1080, 9 → 540)
+ */
+function sla_parse_time_to_minutes( $p_time_str ) {
+    $p_time_str = trim( (string) $p_time_str );
+
+    // HH:MM format
+    if( preg_match( '/^(\d{1,2}):(\d{2})$/', $p_time_str, $t_matches ) ) {
+        return (int) $t_matches[1] * 60 + (int) $t_matches[2];
+    }
+
+    // Legacy integer format (geriye uyumluluk)
+    if( is_numeric( $p_time_str ) ) {
+        return (int) $p_time_str * 60;
+    }
+
+    return 540; // fallback: 09:00
+}
+
+/**
  * Start SLA tracking for a bug at a specific step.
  *
  * @param int $p_bug_id Bug ID
@@ -64,47 +86,44 @@ function sla_complete_tracking( $p_bug_id ) {
 }
 
 /**
- * Calculate SLA deadline considering business hours and working days.
+ * Calculate SLA deadline considering business hours (minute precision) and working days.
  *
  * @param int $p_start_time Unix timestamp start
  * @param int $p_sla_hours SLA hours to add (business hours only)
  * @return int Unix timestamp of deadline
  */
 function sla_calculate_deadline( $p_start_time, $p_sla_hours ) {
-    $t_bh_start = (int) plugin_config_get( 'business_hours_start' );
-    $t_bh_end = (int) plugin_config_get( 'business_hours_end' );
+    $t_bh_start_min = sla_parse_time_to_minutes( plugin_config_get( 'business_hours_start' ) );
+    $t_bh_end_min = sla_parse_time_to_minutes( plugin_config_get( 'business_hours_end' ) );
     $t_working_days_str = plugin_config_get( 'working_days' );
     $t_working_days = array_map( 'intval', explode( ',', $t_working_days_str ) );
 
-    $t_hours_per_day = $t_bh_end - $t_bh_start;
-    if( $t_hours_per_day <= 0 ) {
-        $t_hours_per_day = 8; // fallback
+    $t_minutes_per_day = $t_bh_end_min - $t_bh_start_min;
+    if( $t_minutes_per_day <= 0 ) {
+        $t_minutes_per_day = 480; // fallback: 8 saat
     }
 
-    $t_remaining = $p_sla_hours;
+    $t_remaining_min = $p_sla_hours * 60; // SLA'yı dakikaya çevir
     $t_current = $p_start_time;
 
-    // Advance to next working moment if currently outside business hours
-    $t_current = sla_advance_to_business_time( $t_current, $t_bh_start, $t_bh_end, $t_working_days );
+    // İş saatine ilerle
+    $t_current = sla_advance_to_business_time( $t_current, $t_bh_start_min, $t_bh_end_min, $t_working_days );
 
-    while( $t_remaining > 0 ) {
-        $t_hour = (int) date( 'G', $t_current );
-        $t_hours_left_today = $t_bh_end - $t_hour;
+    while( $t_remaining_min > 0 ) {
+        $t_current_min = (int) date( 'G', $t_current ) * 60 + (int) date( 'i', $t_current );
+        $t_minutes_left_today = $t_bh_end_min - $t_current_min;
 
-        if( $t_hours_left_today <= 0 ) {
-            // Move to next working day
-            $t_current = sla_next_working_day_start( $t_current, $t_bh_start, $t_working_days );
+        if( $t_minutes_left_today <= 0 ) {
+            $t_current = sla_next_working_day_start( $t_current, $t_bh_start_min, $t_working_days );
             continue;
         }
 
-        if( $t_remaining <= $t_hours_left_today ) {
-            // Deadline is today
-            $t_current += $t_remaining * 3600;
-            $t_remaining = 0;
+        if( $t_remaining_min <= $t_minutes_left_today ) {
+            $t_current += $t_remaining_min * 60;
+            $t_remaining_min = 0;
         } else {
-            // Consume today's remaining hours
-            $t_remaining -= $t_hours_left_today;
-            $t_current = sla_next_working_day_start( $t_current, $t_bh_start, $t_working_days );
+            $t_remaining_min -= $t_minutes_left_today;
+            $t_current = sla_next_working_day_start( $t_current, $t_bh_start_min, $t_working_days );
         }
     }
 
@@ -113,31 +132,34 @@ function sla_calculate_deadline( $p_start_time, $p_sla_hours ) {
 
 /**
  * Advance timestamp to the next business time if currently outside.
+ * Now supports minute-precision business hours.
  *
  * @param int $p_time Current timestamp
- * @param int $p_bh_start Business hours start
- * @param int $p_bh_end Business hours end
+ * @param int $p_bh_start_min Business hours start in minutes since midnight
+ * @param int $p_bh_end_min Business hours end in minutes since midnight
  * @param array $p_working_days Working day numbers (1=Mon, 7=Sun)
  * @return int Adjusted timestamp
  */
-function sla_advance_to_business_time( $p_time, $p_bh_start, $p_bh_end, $p_working_days ) {
+function sla_advance_to_business_time( $p_time, $p_bh_start_min, $p_bh_end_min, $p_working_days ) {
     $t_time = $p_time;
     $t_dow = (int) date( 'N', $t_time ); // 1=Mon, 7=Sun
-    $t_hour = (int) date( 'G', $t_time );
+    $t_current_min = (int) date( 'G', $t_time ) * 60 + (int) date( 'i', $t_time );
 
-    // If not a working day, advance to next working day
+    // Çalışma günü değilse sonraki çalışma gününe ilerle
     if( !in_array( $t_dow, $p_working_days ) ) {
-        return sla_next_working_day_start( $t_time, $p_bh_start, $p_working_days );
+        return sla_next_working_day_start( $t_time, $p_bh_start_min, $p_working_days );
     }
 
-    // Before business hours
-    if( $t_hour < $p_bh_start ) {
-        return mktime( $p_bh_start, 0, 0, date( 'n', $t_time ), date( 'j', $t_time ), date( 'Y', $t_time ) );
+    // İş saatinden önce
+    if( $t_current_min < $p_bh_start_min ) {
+        $t_start_h = intdiv( $p_bh_start_min, 60 );
+        $t_start_m = $p_bh_start_min % 60;
+        return mktime( $t_start_h, $t_start_m, 0, date( 'n', $t_time ), date( 'j', $t_time ), date( 'Y', $t_time ) );
     }
 
-    // After business hours
-    if( $t_hour >= $p_bh_end ) {
-        return sla_next_working_day_start( $t_time, $p_bh_start, $p_working_days );
+    // İş saatinden sonra
+    if( $t_current_min >= $p_bh_end_min ) {
+        return sla_next_working_day_start( $t_time, $p_bh_start_min, $p_working_days );
     }
 
     return $t_time;
@@ -145,18 +167,21 @@ function sla_advance_to_business_time( $p_time, $p_bh_start, $p_bh_end, $p_worki
 
 /**
  * Get the start of the next working day.
+ * Now supports minute-precision business hours.
  *
  * @param int $p_time Current timestamp
- * @param int $p_bh_start Business hours start
+ * @param int $p_bh_start_min Business hours start in minutes since midnight
  * @param array $p_working_days Working day numbers
  * @return int Timestamp of next working day start
  */
-function sla_next_working_day_start( $p_time, $p_bh_start, $p_working_days ) {
+function sla_next_working_day_start( $p_time, $p_bh_start_min, $p_working_days ) {
+    $t_start_h = intdiv( $p_bh_start_min, 60 );
+    $t_start_m = $p_bh_start_min % 60;
     $t_time = $p_time + 86400; // Next day
     for( $i = 0; $i < 10; $i++ ) { // Max 10 days lookahead
         $t_dow = (int) date( 'N', $t_time );
         if( in_array( $t_dow, $p_working_days ) ) {
-            return mktime( $p_bh_start, 0, 0, date( 'n', $t_time ), date( 'j', $t_time ), date( 'Y', $t_time ) );
+            return mktime( $t_start_h, $t_start_m, 0, date( 'n', $t_time ), date( 'j', $t_time ), date( 'Y', $t_time ) );
         }
         $t_time += 86400;
     }

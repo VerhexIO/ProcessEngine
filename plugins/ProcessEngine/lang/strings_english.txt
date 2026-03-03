@@ -273,10 +273,7 @@ $s_plugin_ProcessEngine_subprocess_linked_note = 'Subprocess linked: #%d';
 
 # Advance modal
 $s_plugin_ProcessEngine_modal_advance_title = 'Advance Step';
-$s_plugin_ProcessEngine_modal_note_label = 'Note (Description)';
 $s_plugin_ProcessEngine_required = 'Required';
-$s_plugin_ProcessEngine_modal_note_placeholder = 'Write a description or note about this step...';
-$s_plugin_ProcessEngine_note_required_error = 'Note field is required. Please provide a description.';
 
 # Exit conditions
 $s_plugin_ProcessEngine_exit_condition_status_required = 'Issue status must be "%s" to advance.';
@@ -293,4 +290,65 @@ $s_plugin_ProcessEngine_completion_manual = 'Manual';
 $s_plugin_ProcessEngine_completion_on_status = 'On Status';
 $s_plugin_ProcessEngine_completion_on_resolve = 'On Resolve';
 $s_plugin_ProcessEngine_completion_status = 'Target Status';
-$s_plugin_ProcessEngine_note_required_label = 'Note Required';
+# Phase 12: Process Engine Maturation
+
+# Menu
+$s_plugin_ProcessEngine_menu_report = 'Process Report';
+
+# Step instructions
+$s_plugin_ProcessEngine_step_instructions_label = 'Instructions';
+$s_plugin_ProcessEngine_step_instructions_placeholder = 'What needs to be done to complete this step...';
+
+# Configuration — Phase 12
+$s_plugin_ProcessEngine_config_business_hours_format = '(HH:MM format, e.g. 09:00)';
+$s_plugin_ProcessEngine_config_allow_automatic = 'Allow Automatic Processes';
+$s_plugin_ProcessEngine_config_allow_automatic_help = 'Unless this option is enabled, automatic triggers in steps are handled manually.';
+
+# Info panel — Phase 12
+$s_plugin_ProcessEngine_step_status_label = 'Step Status';
+$s_plugin_ProcessEngine_process_start_time = 'Start Time';
+
+# Subprocess guide
+$s_plugin_ProcessEngine_subprocess_management = 'Subprocess Management';
+$s_plugin_ProcessEngine_active_subprocesses = 'Active Subprocesses';
+$s_plugin_ProcessEngine_subprocess_guide_title = 'Subprocess Management';
+$s_plugin_ProcessEngine_subprocess_guide_text = 'This step allows you to open optional subprocess(es). You can create multiple subprocesses.';
+$s_plugin_ProcessEngine_subprocess_guide_new = 'Create: Creates a new request in the target project and links it to this process.';
+$s_plugin_ProcessEngine_subprocess_guide_link = 'Link: You can link an existing request number to this process.';
+$s_plugin_ProcessEngine_subprocess_guide_skip = 'Skip: You can skip directly to the next step by clicking "Advance Step" without opening a subprocess.';
+
+# Report page
+$s_plugin_ProcessEngine_report_title = 'Process Report';
+$s_plugin_ProcessEngine_report_filter_date_from = 'From Date';
+$s_plugin_ProcessEngine_report_filter_date_to = 'To Date';
+$s_plugin_ProcessEngine_report_filter_project = 'Project';
+$s_plugin_ProcessEngine_report_filter_department = 'Department';
+$s_plugin_ProcessEngine_report_filter_flow = 'Flow';
+$s_plugin_ProcessEngine_report_filter_status = 'Status';
+$s_plugin_ProcessEngine_report_btn_filter = 'Filter';
+$s_plugin_ProcessEngine_report_btn_csv = 'Download CSV';
+$s_plugin_ProcessEngine_report_summary_total = 'Total Processes';
+$s_plugin_ProcessEngine_report_summary_avg_duration = 'Avg Duration';
+$s_plugin_ProcessEngine_report_summary_sla_compliance = 'SLA Compliance';
+$s_plugin_ProcessEngine_report_summary_active = 'Active';
+$s_plugin_ProcessEngine_report_chart_dept_performance = 'Department Performance';
+$s_plugin_ProcessEngine_report_chart_sla_distribution = 'SLA Distribution';
+$s_plugin_ProcessEngine_report_chart_step_duration = 'Step Duration Distribution';
+$s_plugin_ProcessEngine_report_chart_monthly_trend = 'Monthly Trend';
+$s_plugin_ProcessEngine_report_col_bug_id = 'Request ID';
+$s_plugin_ProcessEngine_report_col_flow = 'Flow';
+$s_plugin_ProcessEngine_report_col_step = 'Step';
+$s_plugin_ProcessEngine_report_col_department = 'Department';
+$s_plugin_ProcessEngine_report_col_handler = 'Responsible';
+$s_plugin_ProcessEngine_report_col_status = 'Status';
+$s_plugin_ProcessEngine_report_col_duration = 'Duration (hrs)';
+$s_plugin_ProcessEngine_report_col_sla_status = 'SLA Status';
+$s_plugin_ProcessEngine_report_col_wait_reason = 'Wait Reason';
+$s_plugin_ProcessEngine_report_no_data = 'No report data found.';
+$s_plugin_ProcessEngine_report_status_active = 'Active';
+$s_plugin_ProcessEngine_report_status_completed = 'Completed';
+$s_plugin_ProcessEngine_report_status_sla_exceeded = 'SLA Exceeded';
+
+# SLA global check
+$s_plugin_ProcessEngine_sla_global_check = 'Check All SLA';
+$s_plugin_ProcessEngine_sla_global_check_done = 'All SLA statuses have been updated.';

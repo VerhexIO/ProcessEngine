@@ -20,19 +20,23 @@ $t_bug_id = gpc_get_int( 'bug_id', 0 );
 
 $t_response = array( 'success' => false, 'message' => '' );
 
-if( $t_bug_id <= 0 || !bug_exists( $t_bug_id ) ) {
-    $t_response['message'] = plugin_lang_get( 'no_data' );
-    header( 'Content-Type: application/json; charset=utf-8' );
-    echo json_encode( $t_response );
-    exit;
-}
+// Global aksiyonlar bug_id gerektirmez
+$t_global_actions = array( 'global_sla_check' );
+if( !in_array( $t_action, $t_global_actions ) ) {
+    if( $t_bug_id <= 0 || !bug_exists( $t_bug_id ) ) {
+        $t_response['message'] = plugin_lang_get( 'no_data' );
+        header( 'Content-Type: application/json; charset=utf-8' );
+        echo json_encode( $t_response );
+        exit;
+    }
 
-// Bug bazlı yetkilendirme kontrolü
-if( !access_has_bug_level( plugin_config_get( 'action_threshold' ), $t_bug_id ) ) {
-    $t_response['message'] = plugin_lang_get( 'no_data' );
-    header( 'Content-Type: application/json; charset=utf-8' );
-    echo json_encode( $t_response );
-    exit;
+    // Bug bazlı yetkilendirme kontrolü
+    if( !access_has_bug_level( plugin_config_get( 'action_threshold' ), $t_bug_id ) ) {
+        $t_response['message'] = plugin_lang_get( 'no_data' );
+        header( 'Content-Type: application/json; charset=utf-8' );
+        echo json_encode( $t_response );
+        exit;
+    }
 }
 
 switch( $t_action ) {
@@ -52,12 +56,19 @@ switch( $t_action ) {
         $t_response = pe_action_link_manual_child( $t_bug_id );
         break;
 
+    case 'global_sla_check':
+        $t_response = pe_action_global_sla_check();
+        break;
+
     default:
         $t_response['message'] = plugin_lang_get( 'action_invalid' );
         break;
 }
 
 form_security_purge( 'ProcessEngine_dashboard_action' );
+
+// Yanıtta yeni CSRF token döndür — ardışık AJAX istekleri için
+$t_response['new_token'] = form_security_token( 'ProcessEngine_dashboard_action' );
 
 header( 'Content-Type: application/json; charset=utf-8' );
 echo json_encode( $t_response );
@@ -78,37 +89,31 @@ function pe_action_advance_step( $p_bug_id ) {
     $t_flow_id = (int) $t_instance['flow_id'];
     $t_current_step_id = (int) $t_instance['current_step_id'];
     $t_instance_id = (int) $t_instance['id'];
+    $t_inst_status = isset( $t_instance['status'] ) ? $t_instance['status'] : 'ACTIVE';
 
-    // Mevcut adımın bilgilerini oku (not zorunluluğu ve çıkış koşulları için)
+    // WAITING durumdan ilerleme — subprocess adımında kullanıcı manuel olarak ilerletebilir
+    $t_was_waiting = false;
+    if( $t_inst_status === 'WAITING' ) {
+        subprocess_update_instance_status( $t_instance_id, INSTANCE_STATUS_ACTIVE );
+        $t_inst_status = INSTANCE_STATUS_ACTIVE;
+        $t_was_waiting = true;
+    }
+
+    // Mevcut adımın bilgilerini oku (çıkış koşulları için)
     $t_step_table = plugin_table( 'step' );
     db_param_push();
     $t_cur_step_result = db_query( "SELECT * FROM $t_step_table WHERE id = " . db_param(), array( $t_current_step_id ) );
     $t_current_step = db_fetch_array( $t_cur_step_result );
 
-    // Kullanıcı notu
-    $t_advance_note = gpc_get_string( 'note', '' );
-
-    // Not zorunluluğu kontrolü
-    if( $t_current_step !== false
-        && isset( $t_current_step['note_required'] )
-        && (int) $t_current_step['note_required'] === 1
-        && trim( $t_advance_note ) === ''
-    ) {
-        return array( 'success' => false, 'message' => plugin_lang_get( 'note_required_error' ) );
-    }
-
-    // Çıkış koşulu kontrolü
-    if( $t_current_step !== false ) {
+    // Çıkış koşulu kontrolü (subprocess bekleme durumundan ilerletiliyorsa atla — kullanıcı bilinçli ilerletiyor)
+    if( $t_current_step !== false && !$t_was_waiting ) {
         $t_exit_check = process_check_step_exit_conditions( $p_bug_id, $t_current_step );
         if( !$t_exit_check['can_advance'] ) {
             return array( 'success' => false, 'message' => $t_exit_check['reason'] );
         }
     }
 
-    // Not boşsa varsayılan mesaj
-    if( trim( $t_advance_note ) === '' ) {
-        $t_advance_note = plugin_lang_get( 'action_advance_success' );
-    }
+    $t_advance_note = plugin_lang_get( 'action_advance_success' );
 
     // Geçerli geçişleri bul
     $t_valid_transitions = process_get_valid_transitions( $t_flow_id, $t_current_step_id, $p_bug_id );
@@ -221,12 +226,6 @@ function pe_action_create_subprocess( $p_bug_id ) {
 
     if( $t_step === false || !isset( $t_step['step_type'] ) || $t_step['step_type'] !== 'subprocess' ) {
         return array( 'success' => false, 'message' => plugin_lang_get( 'manual_link_not_subprocess' ) );
-    }
-
-    // Zaten çocuk var mı kontrol et
-    $t_children = subprocess_get_children( $t_instance_id, $t_current_step_id );
-    if( !empty( $t_children ) ) {
-        return array( 'success' => false, 'message' => plugin_lang_get( 'subprocess_already_exists' ) );
     }
 
     $t_child_flow_id = isset( $t_step['child_flow_id'] ) ? (int) $t_step['child_flow_id'] : 0;
@@ -370,4 +369,45 @@ function pe_action_refresh_sla( $p_bug_id ) {
     }
 
     return array( 'success' => true, 'message' => plugin_lang_get( 'action_sla_refreshed' ) );
+}
+
+/**
+ * Check all active SLAs globally and update their statuses.
+ *
+ * @return array Response array
+ */
+function pe_action_global_sla_check() {
+    // MANAGER+ yetki kontrolü
+    if( !access_has_global_level( plugin_config_get( 'manage_threshold' ) ) ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'no_data' ) );
+    }
+
+    $t_sla_table = plugin_table( 'sla_tracking' );
+    $t_result = db_query( "SELECT * FROM $t_sla_table WHERE completed_at IS NULL" );
+
+    $t_now = time();
+    $t_warning_pct = (int) plugin_config_get( 'sla_warning_percent' );
+    $t_updated = 0;
+
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_deadline = (int) $t_row['deadline_at'];
+        $t_started = (int) $t_row['started_at'];
+        $t_total_sec = $t_deadline - $t_started;
+        $t_elapsed_sec = $t_now - $t_started;
+        $t_elapsed_pct = ( $t_total_sec > 0 ) ? ( $t_elapsed_sec / $t_total_sec * 100 ) : 100;
+
+        $t_new_status = 'NORMAL';
+        if( $t_now >= $t_deadline ) {
+            $t_new_status = 'EXCEEDED';
+        } else if( $t_elapsed_pct >= $t_warning_pct ) {
+            $t_new_status = 'WARNING';
+        }
+
+        if( $t_new_status !== $t_row['sla_status'] ) {
+            sla_update_field( (int) $t_row['id'], 'sla_status', $t_new_status );
+            $t_updated++;
+        }
+    }
+
+    return array( 'success' => true, 'message' => plugin_lang_get( 'sla_global_check_done' ) );
 }

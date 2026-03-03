@@ -12,14 +12,15 @@ access_ensure_global_level( plugin_config_get( 'manage_threshold' ) );
 layout_page_header( plugin_lang_get( 'config_title' ) );
 layout_page_begin();
 
-$t_manage_threshold     = plugin_config_get( 'manage_threshold' );
-$t_view_threshold       = plugin_config_get( 'view_threshold' );
-$t_action_threshold     = plugin_config_get( 'action_threshold' );
-$t_sla_warning_percent  = plugin_config_get( 'sla_warning_percent' );
-$t_business_hours_start = plugin_config_get( 'business_hours_start' );
-$t_business_hours_end   = plugin_config_get( 'business_hours_end' );
-$t_working_days         = plugin_config_get( 'working_days' );
-$t_departments          = plugin_config_get( 'departments', '' );
+$t_manage_threshold          = plugin_config_get( 'manage_threshold' );
+$t_view_threshold            = plugin_config_get( 'view_threshold' );
+$t_action_threshold          = plugin_config_get( 'action_threshold' );
+$t_sla_warning_percent       = plugin_config_get( 'sla_warning_percent' );
+$t_business_hours_start      = plugin_config_get( 'business_hours_start' );
+$t_business_hours_end        = plugin_config_get( 'business_hours_end' );
+$t_working_days              = plugin_config_get( 'working_days' );
+$t_departments               = plugin_config_get( 'departments', '' );
+$t_allow_automatic_processes = plugin_config_get( 'allow_automatic_processes' );
 
 // Access levels for dropdown
 $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access_levels_enum_string' ) );
@@ -123,27 +124,29 @@ $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access
                             </td>
                         </tr>
 
-                        <!-- Business Hours Start -->
+                        <!-- Business Hours Start (HH:MM) -->
                         <tr>
                             <td class="category">
                                 <?php echo plugin_lang_get( 'config_business_hours_start' ); ?>
+                                <br /><small><?php echo plugin_lang_get( 'config_business_hours_format' ); ?></small>
                             </td>
                             <td>
-                                <input type="number" name="business_hours_start" class="input-sm"
-                                       value="<?php echo (int) $t_business_hours_start; ?>"
-                                       min="0" max="23" />
+                                <input type="text" name="business_hours_start" class="input-sm"
+                                       value="<?php echo string_attribute( $t_business_hours_start ); ?>"
+                                       placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" />
                             </td>
                         </tr>
 
-                        <!-- Business Hours End -->
+                        <!-- Business Hours End (HH:MM) -->
                         <tr>
                             <td class="category">
                                 <?php echo plugin_lang_get( 'config_business_hours_end' ); ?>
+                                <br /><small><?php echo plugin_lang_get( 'config_business_hours_format' ); ?></small>
                             </td>
                             <td>
-                                <input type="number" name="business_hours_end" class="input-sm"
-                                       value="<?php echo (int) $t_business_hours_end; ?>"
-                                       min="0" max="23" />
+                                <input type="text" name="business_hours_end" class="input-sm"
+                                       value="<?php echo string_attribute( $t_business_hours_end ); ?>"
+                                       placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" />
                             </td>
                         </tr>
 
@@ -170,6 +173,21 @@ $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access
                                 <input type="text" name="departments" class="form-control input-sm"
                                        value="<?php echo string_attribute( $t_departments ); ?>"
                                        placeholder="Satış, Fiyatlandırma, ArGe, Kalite" />
+                            </td>
+                        </tr>
+
+                        <!-- Allow Automatic Processes -->
+                        <tr>
+                            <td class="category">
+                                <?php echo plugin_lang_get( 'config_allow_automatic' ); ?>
+                                <br /><small><?php echo plugin_lang_get( 'config_allow_automatic_help' ); ?></small>
+                            </td>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="allow_automatic_processes" value="1"
+                                           <?php echo ( $t_allow_automatic_processes ? 'checked' : '' ); ?> />
+                                    <?php echo plugin_lang_get( 'config_allow_automatic_label' ); ?>
+                                </label>
                             </td>
                         </tr>
                     </table>

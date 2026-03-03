@@ -89,10 +89,10 @@
             child_flow_id: parseInt(s.child_flow_id) || 0,
             child_project_id: parseInt(s.child_project_id) || 0,
             wait_mode: s.wait_mode || 'all',
-            note_required: parseInt(s.note_required) || 0,
             start_trigger: s.start_trigger || 'auto',
             completion_criteria: s.completion_criteria || 'manual',
-            completion_status: parseInt(s.completion_status) || 0
+            completion_status: parseInt(s.completion_status) || 0,
+            step_instructions: s.step_instructions || ''
         };
     }
 
@@ -199,6 +199,22 @@
         sla.setAttribute('text-anchor', 'middle');
         sla.textContent = infoText;
         g.appendChild(sla);
+
+        // step_instructions varsa ℹ ikonu
+        if (step.step_instructions && step.step_instructions.length > 0) {
+            var infoIcon = document.createElementNS(SVG_NS, 'text');
+            infoIcon.setAttribute('x', NODE_W - 14);
+            infoIcon.setAttribute('y', 14);
+            infoIcon.setAttribute('font-size', '12');
+            infoIcon.setAttribute('fill', '#3498db');
+            infoIcon.setAttribute('pointer-events', 'none');
+            infoIcon.textContent = '\u2139'; // ℹ
+            g.appendChild(infoIcon);
+            // Tooltip
+            var tooltip = document.createElementNS(SVG_NS, 'title');
+            tooltip.textContent = step.step_instructions;
+            infoIcon.appendChild(tooltip);
+        }
 
         // Output port (right side)
         var portOut = document.createElementNS(SVG_NS, 'circle');
@@ -520,8 +536,8 @@
                         ? (parseInt(completionStatusEl ? completionStatusEl.value : 0) || 0)
                         : 0;
 
-                    var noteRequiredEl = document.getElementById('pe-modal-note-required');
-                    step.note_required = (noteRequiredEl && noteRequiredEl.checked) ? 1 : 0;
+                    var instructionsEl = document.getElementById('pe-modal-step-instructions');
+                    step.step_instructions = instructionsEl ? instructionsEl.value : '';
 
                     isDirty = true;
                     render();
@@ -604,8 +620,8 @@
             completionStatusGroup.style.display = (step.completion_criteria === 'on_status') ? 'block' : 'none';
         }
 
-        var noteRequiredEl = document.getElementById('pe-modal-note-required');
-        if (noteRequiredEl) noteRequiredEl.checked = (parseInt(step.note_required) === 1);
+        var instructionsEl = document.getElementById('pe-modal-step-instructions');
+        if (instructionsEl) instructionsEl.value = step.step_instructions || '';
 
         $('#pe-step-modal').modal('show');
     }
@@ -698,10 +714,10 @@
                 child_flow_id: 0,
                 child_project_id: 0,
                 wait_mode: 'all',
-                note_required: 0,
                 start_trigger: 'auto',
                 completion_criteria: 'manual',
-                completion_status: 0
+                completion_status: 0,
+                step_instructions: ''
             });
             selectedNodeId = id;
             render();
@@ -741,10 +757,10 @@
                     child_flow_id: s.child_flow_id,
                     child_project_id: s.child_project_id,
                     wait_mode: s.wait_mode,
-                    note_required: s.note_required,
                     start_trigger: s.start_trigger,
                     completion_criteria: s.completion_criteria,
-                    completion_status: s.completion_status
+                    completion_status: s.completion_status,
+                    step_instructions: s.step_instructions
                 };
             }),
             transitions: transitions.map(function(t) {

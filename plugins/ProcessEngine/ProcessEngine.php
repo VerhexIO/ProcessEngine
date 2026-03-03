@@ -33,14 +33,15 @@ class ProcessEnginePlugin extends MantisPlugin {
      */
     public function config() {
         return array(
-            'manage_threshold'     => MANAGER,
-            'view_threshold'       => REPORTER,
-            'action_threshold'     => DEVELOPER,
-            'sla_warning_percent'  => 80,
-            'business_hours_start' => 9,
-            'business_hours_end'   => 18,
-            'working_days'         => '1,2,3,4,5',
-            'departments'          => '',
+            'manage_threshold'          => MANAGER,
+            'view_threshold'            => REPORTER,
+            'action_threshold'          => DEVELOPER,
+            'sla_warning_percent'       => 80,
+            'business_hours_start'      => '09:00',
+            'business_hours_end'        => '18:00',
+            'working_days'              => '1,2,3,4,5',
+            'departments'               => '',
+            'allow_automatic_processes' => OFF,
         );
     }
 
@@ -296,6 +297,18 @@ class ProcessEnginePlugin extends MantisPlugin {
             array( plugin_table( 'step' ), "completion_status I2 NOTNULL DEFAULT '0'" )
         );
 
+        // 26: Drop note_required column from step table (Faz 12)
+        $t_schema[] = array(
+            'DropColumnSQL',
+            array( plugin_table( 'step' ), 'note_required' )
+        );
+
+        // 27: Add step_instructions column to step table (Faz 12)
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'step' ), "step_instructions XL DEFAULT NULL" )
+        );
+
         return $t_schema;
     }
 
@@ -369,6 +382,9 @@ class ProcessEnginePlugin extends MantisPlugin {
         $t_bug_id = (int) $p_existing_bug->id;
         $t_old_status = (int) $p_existing_bug->status;
         $t_new_status = (int) $p_updated_bug->status;
+
+        // Faz 12: Global otomatik süreç kilidi kontrolü
+        $t_allow_auto = plugin_config_get( 'allow_automatic_processes' );
 
         if( $t_old_status != $t_new_status ) {
             // Akış dışı geçiş kontrolü
@@ -525,6 +541,11 @@ class ProcessEnginePlugin extends MantisPlugin {
                     'url'   => plugin_page( 'dashboard' ),
                     'icon'  => 'fa-cogs',
                 ),
+                array(
+                    'title' => plugin_lang_get( 'menu_report' ),
+                    'url'   => plugin_page( 'report' ),
+                    'icon'  => 'fa-bar-chart',
+                ),
             );
         }
         return array();
@@ -550,6 +571,15 @@ class ProcessEnginePlugin extends MantisPlugin {
     public function on_layout_resources( $p_event ) {
         $t_css = '<link rel="stylesheet" href="' . plugin_file( 'process_panel.css' ) . '" />' . "\n";
         $t_js = '<script src="' . plugin_file( 'process_panel.js' ) . '"></script>' . "\n";
+
+        // Rapor sayfasında Chart.js + report CSS/JS yükle
+        $t_current_page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+        if( strpos( $t_current_page, 'ProcessEngine/report' ) !== false ) {
+            $t_css .= '<link rel="stylesheet" href="' . plugin_file( 'report.css' ) . '" />' . "\n";
+            $t_js .= '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>' . "\n";
+            $t_js .= '<script src="' . plugin_file( 'report.js' ) . '"></script>' . "\n";
+        }
+
         return $t_css . $t_js;
     }
 
@@ -657,7 +687,7 @@ class ProcessEnginePlugin extends MantisPlugin {
 
         // Buton gösterim koşulları
         $t_can_action = access_has_global_level( plugin_config_get( 'action_threshold' ) );
-        $t_show_advance = ( $t_can_action && $t_inst_status === 'ACTIVE' && $p_next_step !== null );
+        $t_show_advance = ( $t_can_action && ( $t_inst_status === 'ACTIVE' || $t_inst_status === 'WAITING' ) && $p_next_step !== null );
         $t_show_waiting = ( $t_inst_status === 'WAITING' );
         $t_next_is_subprocess = ( $p_next_step !== null && isset( $p_next_step['step_type'] ) && $p_next_step['step_type'] === 'subprocess' );
 
@@ -677,30 +707,39 @@ class ProcessEnginePlugin extends MantisPlugin {
             }
         }
 
-        // Subprocess adımında çocuk var mı kontrol et (yarı-manuel)
-        $t_subprocess_needs_child = false;
+        // Subprocess adımında çocuk yönetimi (yarı-manuel, çoklu çocuk destekli)
+        $t_subprocess_show_panel = false;
         $t_subprocess_target_project = '';
+        $t_subprocess_children = array();
         if( $t_current_is_subprocess && $p_instance !== null ) {
             require_once( __DIR__ . '/core/subprocess_api.php' );
-            $t_sp_children = subprocess_get_children( (int) $p_instance['id'], (int) $p_instance['current_step_id'] );
-            if( empty( $t_sp_children ) ) {
-                $t_subprocess_needs_child = true;
-                // "Adımı İlerlet" butonunu gizle — önce çocuk oluşturulmalı
-                $t_show_advance = false;
-                // Hedef proje adını bul
-                $t_sp_project_id = isset( $t_current_step_data['child_project_id'] ) ? (int) $t_current_step_data['child_project_id'] : 0;
-                if( $t_sp_project_id > 0 && project_exists( $t_sp_project_id ) ) {
-                    $t_subprocess_target_project = project_get_name( $t_sp_project_id );
-                } else {
-                    $t_subprocess_target_project = project_get_name( bug_get_field( $p_bug_id, 'project_id' ) );
-                }
+            $t_subprocess_children = subprocess_get_children( (int) $p_instance['id'], (int) $p_instance['current_step_id'] );
+            // Subprocess adımında her zaman paneli göster (çocuk olsun/olmasın)
+            $t_subprocess_show_panel = true;
+            // Hedef proje adını bul
+            $t_sp_project_id = isset( $t_current_step_data['child_project_id'] ) ? (int) $t_current_step_data['child_project_id'] : 0;
+            if( $t_sp_project_id > 0 && project_exists( $t_sp_project_id ) ) {
+                $t_subprocess_target_project = project_get_name( $t_sp_project_id );
+            } else {
+                $t_subprocess_target_project = project_get_name( bug_get_field( $p_bug_id, 'project_id' ) );
             }
         }
 
-        // Not zorunluluğu bilgisi
-        $t_note_required = ( $t_current_step_data !== null && isset( $t_current_step_data['note_required'] ) && (int) $t_current_step_data['note_required'] === 1 );
+        // Talimat bilgisi (step_instructions)
+        $t_step_instructions = ( $t_current_step_data !== null && isset( $t_current_step_data['step_instructions'] ) ) ? $t_current_step_data['step_instructions'] : '';
         $t_current_step_name_for_modal = $t_current_step ? $t_current_step['name'] : '';
         $t_next_step_name_for_modal = ( $p_next_step !== null ) ? $p_next_step['name'] : '';
+
+        // Bug'ın mevcut MantisBT durumu
+        $t_bug_status = (int) bug_get_field( $p_bug_id, 'status' );
+        $t_bug_status_label = get_enum_element( 'status', $t_bug_status );
+
+        // Süreç başlangıç zamanı (ilk log kaydı)
+        $t_start_time_str = '-';
+        $t_first_log = process_get_logs_for_bug( $p_bug_id );
+        if( !empty( $t_first_log ) ) {
+            $t_start_time_str = date( 'd.m.Y H:i', (int) $t_first_log[0]['created_at'] );
+        }
 ?>
 <div class="col-md-12 col-xs-12">
     <div class="space-10"></div>
@@ -739,7 +778,21 @@ class ProcessEnginePlugin extends MantisPlugin {
                         <div class="pe-info-label"><?php echo plugin_lang_get( 'responsible' ); ?></div>
                         <div class="pe-info-value"><?php echo string_display_line( $t_handler_name ); ?></div>
                     </div>
+                    <div class="pe-info-item">
+                        <div class="pe-info-label"><?php echo plugin_lang_get( 'step_status_label' ); ?></div>
+                        <div class="pe-info-value"><?php echo string_display_line( $t_bug_status_label ); ?></div>
+                    </div>
+                    <div class="pe-info-item">
+                        <div class="pe-info-label"><?php echo plugin_lang_get( 'process_start_time' ); ?></div>
+                        <div class="pe-info-value"><?php echo $t_start_time_str; ?></div>
+                    </div>
                 </div>
+                <?php if( $t_step_instructions !== '' ) { ?>
+                <div class="pe-instructions-box">
+                    <div class="pe-instructions-label"><i class="fa fa-info-circle"></i> <?php echo plugin_lang_get( 'step_instructions_label' ); ?></div>
+                    <div class="pe-instructions-text"><?php echo string_display_line( $t_step_instructions ); ?></div>
+                </div>
+                <?php } ?>
                 <?php if( $p_next_step !== null && $t_inst_status !== 'COMPLETED' && $t_inst_status !== 'CANCELLED' ) { ?>
                 <div class="pe-info-next-step">
                     <span class="pe-info-label"><?php echo plugin_lang_get( 'next_step' ); ?>:</span>
@@ -749,9 +802,38 @@ class ProcessEnginePlugin extends MantisPlugin {
                     <?php } ?>
                 </div>
                 <?php } ?>
-                <?php if( $t_subprocess_needs_child && $t_can_action ) { ?>
+                <?php if( $t_subprocess_show_panel && $t_can_action ) { ?>
                 <div class="pe-subprocess-action-panel">
-                    <h5><i class="fa fa-exclamation-triangle"></i> <?php echo plugin_lang_get( 'subprocess_needs_child' ); ?></h5>
+                    <h5><i class="fa fa-sitemap"></i> <?php echo plugin_lang_get( 'subprocess_management' ); ?></h5>
+                    <?php if( !empty( $t_subprocess_children ) ) { ?>
+                    <div class="pe-subprocess-children-list">
+                        <strong><?php echo plugin_lang_get( 'active_subprocesses' ); ?>:</strong>
+                        <ul>
+                        <?php foreach( $t_subprocess_children as $t_sp_child ) {
+                            $t_child_bid = (int) $t_sp_child['bug_id'];
+                            $t_child_status = isset( $t_sp_child['status'] ) ? $t_sp_child['status'] : 'ACTIVE';
+                            $t_child_badge = 'pe-badge-active';
+                            if( $t_child_status === 'COMPLETED' ) $t_child_badge = 'pe-badge-completed';
+                            else if( $t_child_status === 'WAITING' ) $t_child_badge = 'pe-badge-waiting';
+                            $t_child_summary = bug_exists( $t_child_bid ) ? bug_get_field( $t_child_bid, 'summary' ) : '#' . $t_child_bid;
+                        ?>
+                            <li>
+                                <a href="<?php echo string_get_bug_view_url( $t_child_bid ); ?>"><?php echo bug_format_id( $t_child_bid ); ?></a>
+                                <?php echo string_display_line( $t_child_summary ); ?>
+                                <span class="pe-status-badge <?php echo $t_child_badge; ?>"><?php echo $t_child_status; ?></span>
+                            </li>
+                        <?php } ?>
+                        </ul>
+                    </div>
+                    <?php } ?>
+                    <div class="pe-subprocess-guide">
+                        <p><?php echo plugin_lang_get( 'subprocess_guide_text' ); ?></p>
+                        <ul>
+                            <li><strong><?php echo plugin_lang_get( 'subprocess_guide_new' ); ?></strong></li>
+                            <li><strong><?php echo plugin_lang_get( 'subprocess_guide_link' ); ?></strong></li>
+                            <li><strong><?php echo plugin_lang_get( 'subprocess_guide_skip' ); ?></strong></li>
+                        </ul>
+                    </div>
                     <div class="pe-target-info">
                         <?php echo plugin_lang_get( 'child_project' ); ?>: <strong><?php echo string_display_line( $t_subprocess_target_project ); ?></strong>
                     </div>
@@ -769,17 +851,23 @@ class ProcessEnginePlugin extends MantisPlugin {
                 </div>
                 <?php } ?>
                 <div class="pe-info-actions">
+                    <?php if( $t_show_waiting && $t_current_is_subprocess ) { ?>
+                    <span class="pe-waiting-label" style="margin-right: 10px;">
+                        <i class="fa fa-hourglass-half"></i>
+                        <?php echo plugin_lang_get( 'subprocess_waiting' ); ?>
+                    </span>
+                    <?php } ?>
                     <?php if( $t_show_advance ) { ?>
                     <button class="btn btn-sm btn-primary pe-bugview-advance"
                             data-bug-id="<?php echo (int) $p_bug_id; ?>"
                             data-is-subprocess="<?php echo $t_next_is_subprocess ? '1' : '0'; ?>"
-                            data-note-required="<?php echo $t_note_required ? '1' : '0'; ?>"
+                            data-instructions="<?php echo string_attribute( $t_step_instructions ); ?>"
                             data-current-step="<?php echo string_attribute( $t_current_step_name_for_modal ); ?>"
                             data-next-step="<?php echo string_attribute( $t_next_step_name_for_modal ); ?>">
                         <i class="fa fa-forward"></i>
                         <?php echo plugin_lang_get( 'btn_advance_step' ); ?>
                     </button>
-                    <?php } else if( $t_show_waiting ) { ?>
+                    <?php } else if( $t_show_waiting && !$t_current_is_subprocess ) { ?>
                     <span class="pe-waiting-label">
                         <i class="fa fa-hourglass-half"></i>
                         <?php echo plugin_lang_get( 'subprocess_waiting' ); ?>
@@ -790,7 +878,7 @@ class ProcessEnginePlugin extends MantisPlugin {
         </div>
     </div>
 </div>
-<?php if( $t_show_advance || $t_subprocess_needs_child ) { ?>
+<?php if( $t_show_advance || $t_subprocess_show_panel ) { ?>
 <input type="hidden" id="pe-bugview-token" value="<?php echo form_security_token( 'ProcessEngine_dashboard_action' ); ?>" />
 <input type="hidden" id="pe-bugview-action-url" value="<?php echo plugin_page( 'dashboard_action' ); ?>" />
 <?php } ?>
@@ -808,11 +896,10 @@ class ProcessEnginePlugin extends MantisPlugin {
             <i class="fa fa-arrow-right"></i>
             <strong id="pe-modal-next-step"></strong>
         </div>
-        <div class="pe-modal-note-label">
-            <?php echo plugin_lang_get( 'modal_note_label' ); ?>
-            <span class="pe-badge-required" id="pe-modal-required-badge" style="display:none;"><?php echo plugin_lang_get( 'required' ); ?></span>
+        <div class="pe-modal-instructions" id="pe-modal-instructions" style="display:none;">
+            <div class="pe-instructions-label"><i class="fa fa-info-circle"></i> <?php echo plugin_lang_get( 'step_instructions_label' ); ?></div>
+            <div class="pe-instructions-text" id="pe-modal-instructions-text"></div>
         </div>
-        <textarea id="pe-modal-note" class="form-control" rows="4" placeholder="<?php echo plugin_lang_get( 'modal_note_placeholder' ); ?>"></textarea>
         <div class="pe-modal-error" id="pe-modal-error"></div>
     </div>
     <div class="pe-modal-footer">
@@ -827,9 +914,43 @@ class ProcessEnginePlugin extends MantisPlugin {
     }
 
     /**
-     * Render the visual step progress bar (stepper)
+     * Render the visual step progress bar (stepper) — Faz 12: ağaç/dal desteği
      */
     private function render_step_progress_bar( $t_progress ) {
+        require_once( __DIR__ . '/core/subprocess_api.php' );
+
+        // Instance bilgisi (subprocess dalları için)
+        $t_instance = null;
+        $t_children_by_step = array();
+        if( !empty( $t_progress['steps'] ) ) {
+            // İlk adımın ID'sinden bug_id bul
+            $t_log_table = plugin_table( 'log' );
+            db_param_push();
+            $t_log_r = db_query(
+                "SELECT DISTINCT bug_id FROM $t_log_table WHERE flow_id = " . db_param() . " ORDER BY id DESC LIMIT 1",
+                array( (int) $t_progress['flow']['id'] )
+            );
+            $t_log_row = db_fetch_array( $t_log_r );
+            if( $t_log_row !== false ) {
+                $t_instance = subprocess_get_instance( (int) $t_log_row['bug_id'] );
+                if( $t_instance !== null ) {
+                    // Subprocess çocuklarını adım bazında grupla
+                    $t_inst_table = plugin_table( 'process_instance' );
+                    db_param_push();
+                    $t_ch_r = db_query(
+                        "SELECT * FROM $t_inst_table WHERE parent_instance_id = " . db_param(),
+                        array( (int) $t_instance['id'] )
+                    );
+                    while( $t_ch_row = db_fetch_array( $t_ch_r ) ) {
+                        $t_ps_id = (int) $t_ch_row['parent_step_id'];
+                        if( !isset( $t_children_by_step[$t_ps_id] ) ) {
+                            $t_children_by_step[$t_ps_id] = array();
+                        }
+                        $t_children_by_step[$t_ps_id][] = $t_ch_row;
+                    }
+                }
+            }
+        }
 ?>
 <div class="col-md-12 col-xs-12">
     <div class="space-10"></div>
@@ -842,24 +963,56 @@ class ProcessEnginePlugin extends MantisPlugin {
         </div>
         <div class="widget-body">
             <div class="widget-main">
-                <div class="pe-stepper">
+                <div class="pe-progress-tree">
                     <?php foreach( $t_progress['steps'] as $i => $t_step ) {
-                        $t_circle_class = 'pe-step-pending';
+                        $t_node_class = 'pe-progress-node--pending';
                         if( $t_step['status'] === 'completed' ) {
-                            $t_circle_class = 'pe-step-completed';
+                            $t_node_class = 'pe-progress-node--completed';
                         } else if( $t_step['status'] === 'current' ) {
-                            $t_circle_class = 'pe-step-current';
+                            $t_node_class = 'pe-progress-node--current';
                         }
-                        $t_is_last = ( $i === count( $t_progress['steps'] ) - 1 );
+                        $t_step_id = (int) $t_step['id'];
+                        $t_has_children = isset( $t_children_by_step[$t_step_id] );
                     ?>
-                    <div class="pe-stepper-item <?php echo $t_circle_class; ?>">
-                        <div class="pe-step-circle"><?php echo ( $i + 1 ); ?></div>
-                        <div class="pe-step-label"><?php echo string_display_line( $t_step['name'] ); ?></div>
-                        <div class="pe-step-dept"><?php echo string_display_line( $t_step['department'] ); ?></div>
-                        <?php if( !$t_is_last ) { ?>
-                        <div class="pe-step-connector"></div>
+                    <div class="pe-progress-node <?php echo $t_node_class; ?>">
+                        <div class="pe-progress-node-indicator">
+                            <?php if( $t_step['status'] === 'completed' ) { ?>
+                                <i class="fa fa-check"></i>
+                            <?php } else if( $t_step['status'] === 'current' ) { ?>
+                                <i class="fa fa-circle"></i>
+                            <?php } else { ?>
+                                <i class="fa fa-circle-o"></i>
+                            <?php } ?>
+                        </div>
+                        <div class="pe-progress-node-content">
+                            <span class="pe-progress-node-name"><?php echo string_display_line( $t_step['name'] ); ?></span>
+                            <?php if( $t_step['department'] !== '' ) { ?>
+                            <span class="pe-progress-node-dept"><?php echo string_display_line( $t_step['department'] ); ?></span>
+                            <?php } ?>
+                        </div>
+                    </div>
+                    <?php if( $t_has_children ) { ?>
+                    <div class="pe-progress-branch">
+                        <?php foreach( $t_children_by_step[$t_step_id] as $t_child_inst ) {
+                            $t_child_bug_id = (int) $t_child_inst['bug_id'];
+                            $t_child_exists = bug_exists( $t_child_bug_id );
+                            $t_child_status = $t_child_inst['status'];
+                            $t_child_class = 'pe-progress-child--' . strtolower( $t_child_status );
+                        ?>
+                        <div class="pe-progress-child <?php echo $t_child_class; ?>">
+                            <span class="pe-progress-child-icon"><i class="fa fa-code-fork"></i></span>
+                            <span class="pe-progress-child-label">
+                                <?php if( $t_child_exists ) { ?>
+                                    <a href="<?php echo string_get_bug_view_url( $t_child_bug_id ); ?>"><?php echo bug_format_id( $t_child_bug_id ); ?></a>
+                                <?php } else { ?>
+                                    <?php echo bug_format_id( $t_child_bug_id ); ?>
+                                <?php } ?>
+                                — <?php echo plugin_lang_get( 'instance_' . strtolower( $t_child_status ) ); ?>
+                            </span>
+                        </div>
                         <?php } ?>
                     </div>
+                    <?php } ?>
                     <?php } ?>
                 </div>
             </div>

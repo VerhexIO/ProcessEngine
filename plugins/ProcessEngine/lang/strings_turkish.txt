@@ -273,10 +273,7 @@ $s_plugin_ProcessEngine_subprocess_linked_note = 'Alt süreç bağlandı: #%d';
 
 # İlerleme modalı
 $s_plugin_ProcessEngine_modal_advance_title = 'Adımı İlerlet';
-$s_plugin_ProcessEngine_modal_note_label = 'Not (Açıklama)';
 $s_plugin_ProcessEngine_required = 'Zorunlu';
-$s_plugin_ProcessEngine_modal_note_placeholder = 'Bu adımla ilgili açıklama veya not yazın...';
-$s_plugin_ProcessEngine_note_required_error = 'Not alanı zorunludur. Lütfen bir açıklama girin.';
 
 # Çıkış koşulları
 $s_plugin_ProcessEngine_exit_condition_status_required = 'İlerletmek için sorunun durumu "%s" olmalıdır.';
@@ -293,4 +290,65 @@ $s_plugin_ProcessEngine_completion_manual = 'Manuel';
 $s_plugin_ProcessEngine_completion_on_status = 'Duruma Göre';
 $s_plugin_ProcessEngine_completion_on_resolve = 'Çözümde';
 $s_plugin_ProcessEngine_completion_status = 'Hedef Durum';
-$s_plugin_ProcessEngine_note_required_label = 'Not Zorunlu';
+# Faz 12: Süreç Motoru Olgunlaştırma
+
+# Menü
+$s_plugin_ProcessEngine_menu_report = 'Süreç Raporu';
+
+# Adım talimatları
+$s_plugin_ProcessEngine_step_instructions_label = 'Talimatlar';
+$s_plugin_ProcessEngine_step_instructions_placeholder = 'Bu adımı geçmek için yapılması gerekenler...';
+
+# Yapılandırma — Faz 12
+$s_plugin_ProcessEngine_config_business_hours_format = '(SS:DD formatında, ör: 09:00)';
+$s_plugin_ProcessEngine_config_allow_automatic = 'Otomatik Süreçlere İzin Ver';
+$s_plugin_ProcessEngine_config_allow_automatic_help = 'Bu seçenek aktif olmadıkça, adımlardaki otomatik tetikleyiciler manuel olarak ele alınır.';
+
+# Bilgi paneli — Faz 12
+$s_plugin_ProcessEngine_step_status_label = 'Adım Durumu';
+$s_plugin_ProcessEngine_process_start_time = 'Başlangıç Zamanı';
+
+# Alt süreç kılavuzu
+$s_plugin_ProcessEngine_subprocess_management = 'Alt Süreç Yönetimi';
+$s_plugin_ProcessEngine_active_subprocesses = 'Mevcut Alt Süreçler';
+$s_plugin_ProcessEngine_subprocess_guide_title = 'Alt Süreç Yönetimi';
+$s_plugin_ProcessEngine_subprocess_guide_text = 'Bu adım opsiyonel alt süreç(ler) açmanıza olanak tanır. Birden fazla alt süreç oluşturabilirsiniz.';
+$s_plugin_ProcessEngine_subprocess_guide_new = 'Yeni Aç: Hedef projede yeni bir talep oluşturur ve bu sürece bağlar.';
+$s_plugin_ProcessEngine_subprocess_guide_link = 'Bağla: Mevcut bir talep numarası girerek bu sürece bağlayabilirsiniz.';
+$s_plugin_ProcessEngine_subprocess_guide_skip = 'Geçiş: Alt süreç açmadan "Adımı İlerlet" ile doğrudan sonraki adıma geçebilirsiniz.';
+
+# Rapor sayfası
+$s_plugin_ProcessEngine_report_title = 'Süreç Raporu';
+$s_plugin_ProcessEngine_report_filter_date_from = 'Başlangıç Tarihi';
+$s_plugin_ProcessEngine_report_filter_date_to = 'Bitiş Tarihi';
+$s_plugin_ProcessEngine_report_filter_project = 'Proje';
+$s_plugin_ProcessEngine_report_filter_department = 'Departman';
+$s_plugin_ProcessEngine_report_filter_flow = 'Akış';
+$s_plugin_ProcessEngine_report_filter_status = 'Durum';
+$s_plugin_ProcessEngine_report_btn_filter = 'Filtrele';
+$s_plugin_ProcessEngine_report_btn_csv = 'CSV İndir';
+$s_plugin_ProcessEngine_report_summary_total = 'Toplam Süreç';
+$s_plugin_ProcessEngine_report_summary_avg_duration = 'Ort. Süre';
+$s_plugin_ProcessEngine_report_summary_sla_compliance = 'SLA Uyum';
+$s_plugin_ProcessEngine_report_summary_active = 'Aktif';
+$s_plugin_ProcessEngine_report_chart_dept_performance = 'Departman Performansı';
+$s_plugin_ProcessEngine_report_chart_sla_distribution = 'SLA Dağılımı';
+$s_plugin_ProcessEngine_report_chart_step_duration = 'Adım Süre Dağılımı';
+$s_plugin_ProcessEngine_report_chart_monthly_trend = 'Aylık Trend';
+$s_plugin_ProcessEngine_report_col_bug_id = 'Talep No';
+$s_plugin_ProcessEngine_report_col_flow = 'Akış';
+$s_plugin_ProcessEngine_report_col_step = 'Adım';
+$s_plugin_ProcessEngine_report_col_department = 'Departman';
+$s_plugin_ProcessEngine_report_col_handler = 'Sorumlu';
+$s_plugin_ProcessEngine_report_col_status = 'Durum';
+$s_plugin_ProcessEngine_report_col_duration = 'Süre (saat)';
+$s_plugin_ProcessEngine_report_col_sla_status = 'SLA Durumu';
+$s_plugin_ProcessEngine_report_col_wait_reason = 'Bekleme Nedeni';
+$s_plugin_ProcessEngine_report_no_data = 'Rapor verisi bulunamadı.';
+$s_plugin_ProcessEngine_report_status_active = 'Aktif';
+$s_plugin_ProcessEngine_report_status_completed = 'Tamamlanan';
+$s_plugin_ProcessEngine_report_status_sla_exceeded = 'SLA Aşımı';
+
+# SLA global kontrol
+$s_plugin_ProcessEngine_sla_global_check = 'Tüm SLA Kontrol';
+$s_plugin_ProcessEngine_sla_global_check_done = 'Tüm SLA durumları güncellendi.';

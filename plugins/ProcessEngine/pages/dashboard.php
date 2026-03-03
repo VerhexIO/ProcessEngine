@@ -124,6 +124,11 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                     }
                     ?>
                 </div>
+                <?php if( access_has_global_level( plugin_config_get( 'manage_threshold' ) ) ) { ?>
+                <button class="btn btn-sm btn-warning pe-sla-global-check" style="margin-right:10px;">
+                    <i class="fa fa-refresh"></i> <?php echo plugin_lang_get( 'sla_global_check' ); ?>
+                </button>
+                <?php } ?>
                 <div class="btn-group">
                     <select id="pe-dept-filter" class="form-control input-sm" style="display:inline-block; width:auto;" onchange="window.location.href='<?php echo plugin_page( 'dashboard' ) . '&filter=' . urlencode( $t_filter ); ?>&department=' + encodeURIComponent(this.value);">
                         <option value=""><?php echo plugin_lang_get( 'all_departments' ); ?></option>

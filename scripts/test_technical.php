@@ -52,7 +52,7 @@ foreach($tables as $t) {
 
 // ============================================================
 echo PHP_EOL . "=== 2. STEP_TABLE YENI SUTUNLAR ===" . PHP_EOL;
-$required_cols = array("step_type", "child_flow_id", "child_project_id", "wait_mode", "note_required", "start_trigger", "completion_criteria", "completion_status");
+$required_cols = array("step_type", "child_flow_id", "child_project_id", "wait_mode", "start_trigger", "completion_criteria", "completion_status", "step_instructions");
 $r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_step_table");
 $existing = array();
 while($row = db_fetch_array($r)) {
@@ -252,16 +252,24 @@ $required_strings = array(
     "subprocess_needs_child", "btn_create_subprocess", "or",
     "link_child_placeholder", "btn_link_child", "subprocess_already_exists",
     "subprocess_created_note", "subprocess_created_success", "subprocess_linked_note",
-    // Faz 11: Ilerleme modali
-    "modal_advance_title", "modal_note_label", "required",
-    "modal_note_placeholder", "note_required_error",
+    // Faz 11: Ilerleme modali (note alanları Faz 12'de kaldırıldı)
+    "modal_advance_title", "required",
     // Faz 11: Cikis kosullari
     "exit_condition_status_required", "exit_condition_resolve_required",
     // Faz 11: Tasarimci — adim yasam dongusu
     "start_trigger", "start_trigger_auto", "start_trigger_on_assign",
     "start_trigger_manual", "start_trigger_on_create",
     "completion_criteria", "completion_manual", "completion_on_status",
-    "completion_on_resolve", "completion_status", "note_required_label"
+    "completion_on_resolve", "completion_status",
+    // Faz 12: Yeni stringler
+    "menu_report", "step_instructions_label", "subprocess_management",
+    "active_subprocesses", "subprocess_guide_text", "subprocess_guide_new",
+    "subprocess_guide_link", "subprocess_guide_skip",
+    "report_title", "report_filter_date_from", "report_filter_date_to",
+    "report_btn_csv", "report_summary_total", "report_summary_avg_duration",
+    "report_summary_sla_compliance", "report_summary_active",
+    "sla_global_check", "sla_global_check_done",
+    "config_allow_automatic", "config_business_hours_format",
 );
 $tr_ok = 0; $en_ok = 0; $missing = 0;
 foreach($required_strings as $s) {
@@ -285,9 +293,14 @@ test_ok("TR: " . $tr_ok . "/" . count($required_strings) . ", EN: " . $en_ok . "
 echo PHP_EOL . "=== 12. DOSYA VARLIK KONTROLU ===" . PHP_EOL;
 $files = array(
     $t_plugin_dir . '/core/subprocess_api.php',
+    $t_plugin_dir . '/core/process_api.php',
+    $t_plugin_dir . '/core/sla_api.php',
     $t_plugin_dir . '/pages/process_tree.php',
+    $t_plugin_dir . '/pages/report.php',
     $t_plugin_dir . '/files/process_tree.css',
     $t_plugin_dir . '/files/process_tree.js',
+    $t_plugin_dir . '/files/report.js',
+    $t_plugin_dir . '/files/report.css',
     $t_plugin_dir . '/db/seed_data.php',
     $t_plugin_dir . '/ProcessEngine.php',
     $t_plugin_dir . '/pages/dashboard.php',
@@ -368,6 +381,78 @@ try {
     }
 } catch(Exception $e) {
     test_warn("Dashboard stats", $e->getMessage());
+}
+
+// ============================================================
+echo PHP_EOL . "=== 16. FAZ 12 RAPOR FONKSIYONLARI ===" . PHP_EOL;
+$faz12_funcs = array(
+    "process_get_report_data",
+    "process_get_department_performance",
+    "process_get_step_duration_stats",
+    "process_get_monthly_trend"
+);
+foreach($faz12_funcs as $f) {
+    if(function_exists($f)) {
+        test_ok($f . "()");
+    } else {
+        test_fail($f . "()", "fonksiyon tanimli degil");
+    }
+}
+
+// ============================================================
+echo PHP_EOL . "=== 17. FAZ 12 DOSYA KONTROLU ===" . PHP_EOL;
+$faz12_files = array(
+    $t_plugin_dir . '/pages/report.php',
+    $t_plugin_dir . '/files/report.js',
+    $t_plugin_dir . '/files/report.css'
+);
+foreach($faz12_files as $f) {
+    if(file_exists($f)) {
+        test_ok(basename($f), filesize($f) . " bytes");
+    } else {
+        test_fail(basename($f), "dosya bulunamadi");
+    }
+}
+
+// ============================================================
+echo PHP_EOL . "=== 18. FAZ 12 STEP_INSTRUCTIONS SUTUN KONTROLU ===" . PHP_EOL;
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_step_table LIKE 'step_instructions'");
+$row = db_fetch_array($r);
+if($row !== false) {
+    test_ok("step_instructions sutunu mevcut", $row["type"]);
+} else {
+    test_fail("step_instructions sutunu bulunamadi");
+}
+// note_required kaldırılmış olmalı
+$r2 = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_step_table LIKE 'note_required'");
+$row2 = db_fetch_array($r2);
+if($row2 === false) {
+    test_ok("note_required sutunu basariyla kaldirilmis");
+} else {
+    test_fail("note_required sutunu hala mevcut (Faz 12'de kaldirilmali)");
+}
+
+// ============================================================
+echo PHP_EOL . "=== 19. FAZ 12 CONFIG VARSAYILANLARI ===" . PHP_EOL;
+try {
+    plugin_push_current('ProcessEngine');
+    $t_bh_start = plugin_config_get('business_hours_start');
+    $t_bh_end = plugin_config_get('business_hours_end');
+    if(is_string($t_bh_start) && strpos($t_bh_start, ':') !== false) {
+        test_ok("business_hours_start", $t_bh_start . " (HH:MM formatinda)");
+    } else {
+        test_warn("business_hours_start", "eski INT format: " . $t_bh_start);
+    }
+    if(is_string($t_bh_end) && strpos($t_bh_end, ':') !== false) {
+        test_ok("business_hours_end", $t_bh_end . " (HH:MM formatinda)");
+    } else {
+        test_warn("business_hours_end", "eski INT format: " . $t_bh_end);
+    }
+    $t_allow_auto = plugin_config_get('allow_automatic_processes');
+    test_ok("allow_automatic_processes", "deger=" . $t_allow_auto);
+    plugin_pop_current();
+} catch(Exception $e) {
+    test_warn("Config kontrol", $e->getMessage());
 }
 
 // ============================================================

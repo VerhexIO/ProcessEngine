@@ -1,0 +1,89 @@
+/**
+ * ProcessEngine - Report Styles (Faz 12)
+ */
+
+/* Özet Kartları */
+.pe-report-card {
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: 15px;
+    text-align: center;
+    border-left: 4px solid #999;
+    margin-bottom: 10px;
+}
+.pe-report-card-blue {
+    border-left-color: #36a2eb;
+}
+.pe-report-card-green {
+    border-left-color: #4caf50;
+}
+.pe-report-card-orange {
+    border-left-color: #ff9800;
+}
+.pe-report-card-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+.pe-report-card-label {
+    font-size: 12px;
+    color: #777;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+/* Grafik Kutuları */
+.pe-chart-box {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.pe-chart-box h5 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+}
+.pe-chart-box canvas {
+    width: 100% !important;
+}
+
+/* Filtre alanı */
+.widget-toolbox.padding-8 label {
+    margin-right: 4px;
+    margin-left: 10px;
+    font-weight: normal;
+    font-size: 12px;
+}
+.widget-toolbox.padding-8 .input-sm {
+    margin-right: 4px;
+}
+
+/* Sayfalama */
+.pe-pagination {
+    padding: 10px;
+}
+.pe-pagination .btn {
+    margin: 0 2px;
+}
+
+/* SLA badge (rapor tablosu için — process_panel.css'deki ile uyumlu) */
+.pe-sla-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+}
+.pe-sla-normal {
+    background-color: #4caf50;
+}
+.pe-sla-warning {
+    background-color: #ff9800;
+}
+.pe-sla-exceeded {
+    background-color: #f44336;
+}
