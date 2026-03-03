@@ -302,6 +302,7 @@ $s_plugin_ProcessEngine_step_instructions_placeholder = 'Bu adımı geçmek içi
 # Yapılandırma — Faz 12
 $s_plugin_ProcessEngine_config_business_hours_format = '(SS:DD formatında, ör: 09:00)';
 $s_plugin_ProcessEngine_config_allow_automatic = 'Otomatik Süreçlere İzin Ver';
+$s_plugin_ProcessEngine_config_allow_automatic_label = 'Otomatik süreçleri etkinleştir';
 $s_plugin_ProcessEngine_config_allow_automatic_help = 'Bu seçenek aktif olmadıkça, adımlardaki otomatik tetikleyiciler manuel olarak ele alınır.';
 
 # Bilgi paneli — Faz 12

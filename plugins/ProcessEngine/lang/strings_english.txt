@@ -302,6 +302,7 @@ $s_plugin_ProcessEngine_step_instructions_placeholder = 'What needs to be done t
 # Configuration — Phase 12
 $s_plugin_ProcessEngine_config_business_hours_format = '(HH:MM format, e.g. 09:00)';
 $s_plugin_ProcessEngine_config_allow_automatic = 'Allow Automatic Processes';
+$s_plugin_ProcessEngine_config_allow_automatic_label = 'Enable automatic processes';
 $s_plugin_ProcessEngine_config_allow_automatic_help = 'Unless this option is enabled, automatic triggers in steps are handled manually.';
 
 # Info panel — Phase 12

@@ -927,7 +927,7 @@ class ProcessEnginePlugin extends MantisPlugin {
             $t_log_table = plugin_table( 'log' );
             db_param_push();
             $t_log_r = db_query(
-                "SELECT DISTINCT bug_id FROM $t_log_table WHERE flow_id = " . db_param() . " ORDER BY id DESC LIMIT 1",
+                "SELECT bug_id FROM $t_log_table WHERE flow_id = " . db_param() . " ORDER BY id DESC LIMIT 1",
                 array( (int) $t_progress['flow']['id'] )
             );
             $t_log_row = db_fetch_array( $t_log_r );

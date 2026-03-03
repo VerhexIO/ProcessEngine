@@ -269,7 +269,7 @@ $required_strings = array(
     "report_btn_csv", "report_summary_total", "report_summary_avg_duration",
     "report_summary_sla_compliance", "report_summary_active",
     "sla_global_check", "sla_global_check_done",
-    "config_allow_automatic", "config_business_hours_format",
+    "config_allow_automatic", "config_allow_automatic_label", "config_business_hours_format",
 );
 $tr_ok = 0; $en_ok = 0; $missing = 0;
 foreach($required_strings as $s) {
@@ -453,6 +453,68 @@ try {
     plugin_pop_current();
 } catch(Exception $e) {
     test_warn("Config kontrol", $e->getMessage());
+}
+
+// ============================================================
+echo PHP_EOL . "=== 20. DIL DIZGISI BUTUNLUK KONTROLU (Programatik) ===" . PHP_EOL;
+// Tum PHP dosyalarindan plugin_lang_get('xxx') cagrilarini cikar
+$t_used_strings = array();
+$t_scan_dirs = array(
+    $t_plugin_dir . '/pages',
+    $t_plugin_dir . '/core',
+    $t_plugin_dir
+);
+foreach($t_scan_dirs as $t_dir) {
+    if(!is_dir($t_dir)) continue;
+    $t_files = glob($t_dir . '/*.php');
+    foreach($t_files as $t_file) {
+        $t_content = file_get_contents($t_file);
+        // plugin_lang_get( 'xxx' ) kalibini yakala
+        if(preg_match_all("/plugin_lang_get\s*\(\s*['\"]([^'\"]+)['\"]/", $t_content, $t_matches)) {
+            foreach($t_matches[1] as $t_str) {
+                if(!isset($t_used_strings[$t_str])) {
+                    $t_used_strings[$t_str] = array();
+                }
+                $t_used_strings[$t_str][] = basename($t_file);
+            }
+        }
+    }
+}
+
+// Dil dosyasindaki tanimlari cikar
+$t_tr_content = file_get_contents($t_plugin_dir . '/lang/strings_turkish.txt');
+$t_defined_strings = array();
+if(preg_match_all('/\$s_plugin_ProcessEngine_([a-zA-Z0-9_]+)\s*=/', $t_tr_content, $t_def_matches)) {
+    $t_defined_strings = array_flip($t_def_matches[1]);
+}
+
+// Dinamik prefix'leri filtrele (calisma zamaninda birlestirilenler)
+$t_dynamic_prefixes = array('event_type_', 'filter_', 'instance_', 'wait_mode_', 'step_type_', 'condition_', 'report_col_');
+
+$t_missing_count = 0;
+$t_checked = 0;
+foreach($t_used_strings as $t_str => $t_files) {
+    // Dinamik prefix kontrolu — sonu _ ile biten bir prefix'in parcasi mi?
+    $t_is_dynamic = false;
+    foreach($t_dynamic_prefixes as $t_prefix) {
+        if(strpos($t_str, $t_prefix) === 0 || substr($t_str, -1) === '_') {
+            $t_is_dynamic = true;
+            break;
+        }
+    }
+    if($t_is_dynamic) continue;
+
+    $t_checked++;
+    if(!isset($t_defined_strings[$t_str])) {
+        test_fail("Eksik dil dizgisi: " . $t_str, "Kullanan: " . implode(', ', $t_files));
+        $t_missing_count++;
+    }
+}
+
+if($t_missing_count === 0) {
+    test_ok("Programatik dil kontrolu", $t_checked . " dizgi kontrol edildi, hepsi tanimli");
+} else {
+    test_fail("Programatik dil kontrolu", $t_missing_count . " eksik dizgi bulundu");
 }
 
 // ============================================================
