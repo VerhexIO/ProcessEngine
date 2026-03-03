@@ -250,9 +250,12 @@ if( $t_flow_id === 0 ) {
                     <div class="alert alert-info" style="display:inline-block; margin:0; padding:6px 12px;">
                         <i class="fa fa-lock"></i> <?php echo plugin_lang_get( 'flow_readonly_notice' ); ?>
                     </div>
-                    <button id="pe-btn-unpublish" class="btn btn-sm btn-warning">
-                        <i class="fa fa-pause"></i> <?php echo plugin_lang_get( 'btn_unpublish' ); ?>
-                    </button>
+                    <form method="post" action="<?php echo plugin_page( 'flow_designer' ) . '&action=unpublish&flow_id=' . (int) $t_flow['id']; ?>" style="display:inline;">
+                        <?php echo form_security_field( 'ProcessEngine_flow_unpublish' ); ?>
+                        <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('<?php echo plugin_lang_get( 'flow_unpublish_confirm' ); ?>');">
+                            <i class="fa fa-pause"></i> <?php echo plugin_lang_get( 'btn_unpublish' ); ?>
+                        </button>
+                    </form>
                     <?php } else { ?>
                     <button id="pe-btn-add-step" class="btn btn-sm btn-success">
                         <i class="fa fa-plus"></i> <?php echo plugin_lang_get( 'btn_add_step' ); ?>
@@ -456,7 +459,6 @@ if( $t_flow_id === 0 ) {
      data-save-url="<?php echo string_attribute( plugin_page( 'flow_save' ) ); ?>"
      data-validate-url="<?php echo string_attribute( plugin_page( 'flow_validate' ) ); ?>"
      data-publish-url="<?php echo string_attribute( plugin_page( 'flow_publish' ) ); ?>"
-     data-unpublish-url="<?php echo string_attribute( plugin_page( 'flow_unpublish' ) ); ?>"
      data-project-id="<?php echo (int) $t_flow['project_id']; ?>"
      data-steps="<?php echo string_attribute( json_encode( $t_steps ) ); ?>"
      data-transitions="<?php echo string_attribute( json_encode( $t_transitions ) ); ?>"
