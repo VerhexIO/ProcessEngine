@@ -21,17 +21,42 @@ if( $t_action === 'new' ) {
     print_header_redirect( plugin_page( 'flow_designer', true ) . '&flow_id=' . $t_flow_id );
 }
 
+// Handle unpublish
+if( $t_action === 'unpublish' && $t_flow_id > 0 ) {
+    form_security_validate( 'ProcessEngine_flow_unpublish' );
+    $t_unpublished = flow_unpublish( $t_flow_id );
+    form_security_purge( 'ProcessEngine_flow_unpublish' );
+    if( $t_unpublished === 'has_instances' ) {
+        layout_page_header( plugin_lang_get( 'flow_designer_title' ) );
+        layout_page_begin();
+        echo '<div class="alert alert-danger" style="margin: 20px;">'
+            . plugin_lang_get( 'flow_unpublish_has_instances' )
+            . '</div>';
+        layout_page_end();
+        exit;
+    }
+    print_header_redirect( plugin_page( 'flow_designer', true ) );
+}
+
 // Handle delete
 if( $t_action === 'delete' && $t_flow_id > 0 ) {
     form_security_validate( 'ProcessEngine_flow_delete' );
     $t_deleted = flow_delete( $t_flow_id );
     form_security_purge( 'ProcessEngine_flow_delete' );
     if( $t_deleted === false ) {
-        // Aktif instance var, silinemez — hata mesajıyla geri yönlendir
         layout_page_header( plugin_lang_get( 'flow_designer_title' ) );
         layout_page_begin();
         echo '<div class="alert alert-danger" style="margin: 20px;">'
             . plugin_lang_get( 'flow_delete_blocked' )
+            . '</div>';
+        layout_page_end();
+        exit;
+    }
+    if( $t_deleted === 'referenced' ) {
+        layout_page_header( plugin_lang_get( 'flow_designer_title' ) );
+        layout_page_begin();
+        echo '<div class="alert alert-danger" style="margin: 20px;">'
+            . plugin_lang_get( 'flow_delete_referenced' )
             . '</div>';
         layout_page_end();
         exit;
@@ -110,9 +135,21 @@ if( $t_flow_id === 0 ) {
                                 <td><span class="label <?php echo $t_status_class; ?>"><?php echo $t_status_label; ?></span></td>
                                 <td><?php echo $t_flow['updated_at'] ? date( 'Y-m-d H:i', $t_flow['updated_at'] ) : '-'; ?></td>
                                 <td>
+                                    <?php if( (int) $t_flow['status'] === 2 ) { ?>
+                                    <a href="<?php echo plugin_page( 'flow_designer' ) . '&flow_id=' . (int)$t_flow['id']; ?>" class="btn btn-xs btn-info">
+                                        <i class="fa fa-eye"></i> <?php echo plugin_lang_get( 'btn_view' ); ?>
+                                    </a>
+                                    <form method="post" action="<?php echo plugin_page( 'flow_designer' ) . '&action=unpublish&flow_id=' . (int)$t_flow['id']; ?>" style="display:inline;">
+                                        <?php echo form_security_field( 'ProcessEngine_flow_unpublish' ); ?>
+                                        <button type="submit" class="btn btn-xs btn-warning" onclick="return confirm('<?php echo plugin_lang_get( 'flow_unpublish_confirm' ); ?>');">
+                                            <i class="fa fa-pause"></i> <?php echo plugin_lang_get( 'btn_unpublish' ); ?>
+                                        </button>
+                                    </form>
+                                    <?php } else { ?>
                                     <a href="<?php echo plugin_page( 'flow_designer' ) . '&flow_id=' . (int)$t_flow['id']; ?>" class="btn btn-xs btn-primary">
                                         <i class="fa fa-pencil"></i> <?php echo plugin_lang_get( 'btn_edit' ); ?>
                                     </a>
+                                    <?php } ?>
                                     <form method="post" action="<?php echo plugin_page( 'flow_designer' ) . '&action=delete&flow_id=' . (int)$t_flow['id']; ?>" style="display:inline;">
                                         <?php echo form_security_field( 'ProcessEngine_flow_delete' ); ?>
                                         <button type="submit" class="btn btn-xs btn-danger" onclick="return confirm('<?php echo plugin_lang_get( 'confirm_delete' ); ?>');">
@@ -206,6 +243,14 @@ if( $t_flow_id === 0 ) {
 
                 <!-- Toolbar -->
                 <div class="btn-toolbar" style="margin-bottom: 10px;">
+                    <?php if( (int) $t_flow['status'] === FLOW_STATUS_ACTIVE ) { ?>
+                    <div class="alert alert-info" style="display:inline-block; margin:0; padding:6px 12px;">
+                        <i class="fa fa-lock"></i> <?php echo plugin_lang_get( 'flow_readonly_notice' ); ?>
+                    </div>
+                    <button id="pe-btn-unpublish" class="btn btn-sm btn-warning">
+                        <i class="fa fa-pause"></i> <?php echo plugin_lang_get( 'btn_unpublish' ); ?>
+                    </button>
+                    <?php } else { ?>
                     <button id="pe-btn-add-step" class="btn btn-sm btn-success">
                         <i class="fa fa-plus"></i> <?php echo plugin_lang_get( 'btn_add_step' ); ?>
                     </button>
@@ -218,6 +263,7 @@ if( $t_flow_id === 0 ) {
                     <button id="pe-btn-publish" class="btn btn-sm btn-danger">
                         <i class="fa fa-rocket"></i> <?php echo plugin_lang_get( 'btn_publish' ); ?>
                     </button>
+                    <?php } ?>
                     <span id="pe-status-msg" class="label" style="margin-left: 10px; display: none;"></span>
                 </div>
 
@@ -407,6 +453,7 @@ if( $t_flow_id === 0 ) {
      data-save-url="<?php echo string_attribute( plugin_page( 'flow_save' ) ); ?>"
      data-validate-url="<?php echo string_attribute( plugin_page( 'flow_validate' ) ); ?>"
      data-publish-url="<?php echo string_attribute( plugin_page( 'flow_publish' ) ); ?>"
+     data-unpublish-url="<?php echo string_attribute( plugin_page( 'flow_unpublish' ) ); ?>"
      data-project-id="<?php echo (int) $t_flow['project_id']; ?>"
      data-steps="<?php echo string_attribute( json_encode( $t_steps ) ); ?>"
      data-transitions="<?php echo string_attribute( json_encode( $t_transitions ) ); ?>"

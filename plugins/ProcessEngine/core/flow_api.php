@@ -124,12 +124,61 @@ function flow_delete( $p_flow_id ) {
         return false;
     }
 
+    // Alt akış referans koruması: başka akışların subprocess adımları bu akışı referans ediyorsa silme
+    db_param_push();
+    $t_ref_result = db_query(
+        "SELECT COUNT(*) AS cnt FROM $t_step_table WHERE child_flow_id = " . db_param()
+        . " AND flow_id != " . db_param(),
+        array( $t_id, $t_id )
+    );
+    $t_ref_row = db_fetch_array( $t_ref_result );
+    if( $t_ref_row !== false && (int) $t_ref_row['cnt'] > 0 ) {
+        return 'referenced';
+    }
+
     db_param_push();
     db_query( "DELETE FROM $t_transition_table WHERE flow_id = " . db_param(), array( $t_id ) );
     db_param_push();
     db_query( "DELETE FROM $t_step_table WHERE flow_id = " . db_param(), array( $t_id ) );
     db_param_push();
     db_query( "DELETE FROM $t_flow_table WHERE id = " . db_param(), array( $t_id ) );
+
+    return true;
+}
+
+/**
+ * Unpublish a flow: set ACTIVE flow back to DRAFT.
+ * Only allowed if no ACTIVE/WAITING instances exist.
+ *
+ * @param int $p_flow_id Flow ID
+ * @return bool|string True on success, false if not active, 'has_instances' if blocked
+ */
+function flow_unpublish( $p_flow_id ) {
+    $t_flow = flow_get( $p_flow_id );
+    if( $t_flow === null || (int) $t_flow['status'] !== FLOW_STATUS_ACTIVE ) {
+        return false;
+    }
+
+    // Aktif instance varsa pasife alma
+    $t_inst_table = plugin_table( 'process_instance' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT COUNT(*) AS cnt FROM $t_inst_table WHERE flow_id = " . db_param()
+        . " AND status IN ('ACTIVE', 'WAITING')",
+        array( (int) $p_flow_id )
+    );
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row !== false && (int) $t_row['cnt'] > 0 ) {
+        return 'has_instances';
+    }
+
+    $t_table = plugin_table( 'flow_definition' );
+    db_param_push();
+    db_query(
+        "UPDATE $t_table SET status = " . db_param() . ", updated_at = " . db_param()
+        . " WHERE id = " . db_param(),
+        array( FLOW_STATUS_DRAFT, time(), (int) $p_flow_id )
+    );
 
     return true;
 }

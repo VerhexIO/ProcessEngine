@@ -31,6 +31,7 @@
     var PE_SAVE_URL = '';
     var PE_VALIDATE_URL = '';
     var PE_PUBLISH_URL = '';
+    var PE_UNPUBLISH_URL = '';
 
     // ---- Init ----
     function init() {
@@ -45,6 +46,7 @@
             PE_SAVE_URL = configEl.getAttribute('data-save-url') || '';
             PE_VALIDATE_URL = configEl.getAttribute('data-validate-url') || '';
             PE_PUBLISH_URL = configEl.getAttribute('data-publish-url') || '';
+            PE_UNPUBLISH_URL = configEl.getAttribute('data-unpublish-url') || '';
 
             try {
                 var stepsData = JSON.parse(configEl.getAttribute('data-steps') || '[]');
@@ -625,8 +627,17 @@
 
     // ---- Toolbar ----
     function bindToolbar() {
-        // Add Step
-        document.getElementById('pe-btn-add-step').addEventListener('click', function() {
+        // Unpublish (only exists on ACTIVE flows)
+        var unpubBtn = document.getElementById('pe-btn-unpublish');
+        if (unpubBtn) {
+            unpubBtn.addEventListener('click', doUnpublish);
+        }
+
+        // Add Step (may not exist on ACTIVE flows)
+        var addBtn = document.getElementById('pe-btn-add-step');
+        if (!addBtn) return; // ACTIVE flow — read-only mode, no edit buttons
+
+        addBtn.addEventListener('click', function() {
             var id = 'temp_' + (nextTempId++);
             // Find a clear position
             var maxX = 100, maxY = 100;
@@ -746,6 +757,18 @@
                     showStatus('danger', msg);
                 }
             });
+        });
+    }
+
+    function doUnpublish() {
+        if (!confirm('Bu akışı pasife almak istediğinizden emin misiniz?')) return;
+        ajaxPost(PE_UNPUBLISH_URL, { flow_id: PE_FLOW_ID }, function(resp) {
+            if (resp.success) {
+                showStatus('success', 'Akış pasife alındı!');
+                setTimeout(function() { window.location.reload(); }, 1000);
+            } else {
+                showStatus('danger', resp.error || 'Pasife alma hatası');
+            }
         });
     }
 
