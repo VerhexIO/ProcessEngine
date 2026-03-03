@@ -237,3 +237,4 @@ $s_plugin_ProcessEngine_btn_view = 'Görüntüle';
 $s_plugin_ProcessEngine_flow_unpublish_confirm = 'Bu akışı pasife almak istediğinizden emin misiniz? Yeni sorunlar için süreç başlatılmayacaktır.';
 $s_plugin_ProcessEngine_flow_unpublish_has_instances = 'Bu akışa bağlı aktif süreçler bulunduğundan pasife alınamaz.';
 $s_plugin_ProcessEngine_flow_unpublish_not_active = 'Bu akış zaten aktif durumda değil.';
+$s_plugin_ProcessEngine_flow_description_placeholder = 'Akış hakkında not, özellik açıklaması veya talimatlar yazın...';

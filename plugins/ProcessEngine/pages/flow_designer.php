@@ -201,19 +201,16 @@ if( $t_flow_id === 0 ) {
         </div>
         <div class="widget-body">
             <div class="widget-main">
+                <?php $t_is_active = ( (int) $t_flow['status'] === FLOW_STATUS_ACTIVE ); ?>
                 <!-- Flow metadata -->
                 <div class="row" style="margin-bottom: 10px;">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label><?php echo plugin_lang_get( 'flow_name' ); ?></label>
-                        <input type="text" id="pe-flow-name" class="form-control input-sm" value="<?php echo string_attribute( $t_flow['name'] ); ?>" />
+                        <input type="text" id="pe-flow-name" class="form-control input-sm" value="<?php echo string_attribute( $t_flow['name'] ); ?>" <?php echo $t_is_active ? 'readonly' : ''; ?> />
                     </div>
-                    <div class="col-md-4">
-                        <label><?php echo plugin_lang_get( 'flow_description' ); ?></label>
-                        <input type="text" id="pe-flow-desc" class="form-control input-sm" value="<?php echo string_attribute( $t_flow['description'] ); ?>" />
-                    </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label><?php echo plugin_lang_get( 'flow_project' ); ?></label>
-                        <select id="pe-flow-project" class="form-control input-sm">
+                        <select id="pe-flow-project" class="form-control input-sm" <?php echo $t_is_active ? 'disabled' : ''; ?>>
                             <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
                             <?php
                             $t_projects = project_get_all_rows();
@@ -238,6 +235,12 @@ if( $t_flow_id === 0 ) {
                             );
                             echo isset($t_sl[(int)$t_flow['status']]) ? $t_sl[(int)$t_flow['status']] : $t_flow['status'];
                         ?></span>
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom: 10px;">
+                    <div class="col-md-12">
+                        <label><?php echo plugin_lang_get( 'flow_description' ); ?></label>
+                        <textarea id="pe-flow-desc" class="form-control" rows="3" placeholder="<?php echo plugin_lang_get( 'flow_description_placeholder' ); ?>" <?php echo $t_is_active ? 'readonly' : ''; ?>><?php echo string_attribute( $t_flow['description'] ); ?></textarea>
                     </div>
                 </div>
 

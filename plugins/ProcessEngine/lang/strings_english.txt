@@ -237,3 +237,4 @@ $s_plugin_ProcessEngine_btn_view = 'View';
 $s_plugin_ProcessEngine_flow_unpublish_confirm = 'Are you sure you want to deactivate this flow? New issues will not start this process.';
 $s_plugin_ProcessEngine_flow_unpublish_has_instances = 'Cannot deactivate this flow because there are active processes linked to it.';
 $s_plugin_ProcessEngine_flow_unpublish_not_active = 'This flow is not currently active.';
+$s_plugin_ProcessEngine_flow_description_placeholder = 'Write notes, feature descriptions or instructions about this flow...';
