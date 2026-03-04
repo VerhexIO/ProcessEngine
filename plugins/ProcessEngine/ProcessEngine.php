@@ -450,6 +450,28 @@ class ProcessEnginePlugin extends MantisPlugin {
                     });
                 }
             }
+
+            // Çocuk süreç tamamlama: Bug resolved olduğunda instance'ı tamamla ve ebeveyni bilgilendir
+            // Not: $t_flow bloğunun dışında — çocuk bug'ın projesi farklı akışa sahip olabilir veya hiç akışı olmayabilir
+            $t_resolved_threshold = config_get( 'bug_resolved_status_threshold' );
+            if( $t_new_status >= $t_resolved_threshold && $t_old_status < $t_resolved_threshold ) {
+                register_shutdown_function( function() use ( $t_bug_id ) {
+                    require_once( __DIR__ . '/core/subprocess_api.php' );
+                    $t_inst = subprocess_get_instance( $t_bug_id );
+                    if( $t_inst === null ) {
+                        return;
+                    }
+                    if( $t_inst['status'] === INSTANCE_STATUS_COMPLETED || $t_inst['status'] === INSTANCE_STATUS_CANCELLED ) {
+                        return;
+                    }
+                    // Instance'ı tamamla (completed_at otomatik ayarlanır)
+                    subprocess_update_instance_status( (int) $t_inst['id'], INSTANCE_STATUS_COMPLETED );
+                    // Ebeveyn varsa bilgilendir (otomatik ilerleme zinciri)
+                    if( $t_inst['parent_instance_id'] !== null ) {
+                        subprocess_on_child_completed( (int) $t_inst['id'] );
+                    }
+                });
+            }
         }
     }
 

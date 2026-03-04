@@ -254,16 +254,17 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                 <td><?php echo date( 'Y-m-d H:i', $t_bug_row['updated_at'] ); ?></td>
                                 <?php if( $t_can_action ) { ?>
                                 <td class="pe-actions-col">
-                                    <?php if( $t_inst_status === 'ACTIVE' ) { ?>
+                                    <?php if( $t_inst_status === 'ACTIVE' || $t_inst_status === 'WAITING' ) { ?>
+                                    <?php if( $t_inst_status === 'WAITING' ) { ?>
+                                    <span class="pe-waiting-label-sm" style="margin-right:4px;">
+                                        <i class="fa fa-hourglass-half"></i>
+                                    </span>
+                                    <?php } ?>
                                     <button class="btn btn-xs btn-primary pe-action-advance"
                                             data-bug-id="<?php echo $t_bug_row['bug_id']; ?>"
                                             title="<?php echo plugin_lang_get( 'action_advance_confirm' ); ?>">
                                         <i class="fa fa-forward"></i>
                                     </button>
-                                    <?php } else if( $t_inst_status === 'WAITING' ) { ?>
-                                    <span class="pe-waiting-label-sm">
-                                        <i class="fa fa-hourglass-half"></i>
-                                    </span>
                                     <?php } ?>
                                     <?php if( $t_bug_row['sla_status'] !== 'NORMAL' && $t_inst_status !== 'COMPLETED' && $t_inst_status !== 'CANCELLED' ) { ?>
                                     <button class="btn btn-xs btn-warning pe-action-sla"
