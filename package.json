@@ -7,7 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx playwright test tests/full-e2e.spec.js",
+    "test:all": "npx playwright test",
+    "test:tech": "docker exec mantisbt php /var/www/html/scripts/test_technical.php"
   },
   "repository": {
     "type": "git",

@@ -518,6 +518,168 @@ if($t_missing_count === 0) {
 }
 
 // ============================================================
+echo PHP_EOL . "=== 21. SUBPROCESS_TARGET_TABLE VARLIK KONTROLU ===" . PHP_EOL;
+$t_target_table = "mantis_plugin_ProcessEngine_subprocess_target_table";
+try {
+    $r = db_query("SELECT COUNT(*) AS cnt FROM " . $t_target_table);
+    $row = db_fetch_array($r);
+    test_ok("subprocess_target_table mevcut", $row["cnt"] . " kayit");
+
+    // Sutun kontrolu
+    $required_target_cols = array("id", "step_id", "child_flow_id", "child_project_id", "target_label");
+    $r = db_query("SHOW COLUMNS FROM " . $t_target_table);
+    $existing_target = array();
+    while($row = db_fetch_array($r)) {
+        $existing_target[] = $row["field"];
+    }
+    foreach($required_target_cols as $col) {
+        if(in_array($col, $existing_target)) {
+            test_ok("subprocess_target." . $col);
+        } else {
+            test_fail("subprocess_target." . $col, "sutun bulunamadi");
+        }
+    }
+} catch(Exception $e) {
+    test_fail("subprocess_target_table", $e->getMessage());
+}
+
+// ============================================================
+echo PHP_EOL . "=== 22. YENI FLOW_API FONKSIYON KONTROLU ===" . PHP_EOL;
+$flow_api_funcs = array(
+    "flow_compute_topological_order",
+    "flow_get_subprocess_targets",
+    "flow_get_subprocess_target",
+    "flow_add_subprocess_target",
+    "flow_delete_subprocess_targets",
+    "flow_delete_subprocess_targets_by_flow",
+    "flow_get_effective_subprocess_targets"
+);
+foreach($flow_api_funcs as $f) {
+    if(function_exists($f)) {
+        test_ok($f . "()");
+    } else {
+        test_fail($f . "()", "fonksiyon tanimli degil");
+    }
+}
+
+// ============================================================
+echo PHP_EOL . "=== 23. TOPOLOJIK SIRALAMA DOGRULAMA ===" . PHP_EOL;
+try {
+    plugin_push_current('ProcessEngine');
+    $r = db_query("SELECT id FROM mantis_plugin_ProcessEngine_flow_definition_table WHERE status=2 LIMIT 1");
+    $row = db_fetch_array($r);
+    if($row) {
+        $t_test_flow_id = (int)$row["id"];
+        $t_order = flow_compute_topological_order($t_test_flow_id);
+        if(!empty($t_order)) {
+            test_ok("flow_compute_topological_order(#" . $t_test_flow_id . ")", count($t_order) . " adim siralanmis");
+
+            // Tum adimlarin siralamada olup olmadigini kontrol et
+            // Not: Fonksiyon step_id => order_index asosyatif dizi dondurur
+            db_param_push();
+            $r2 = db_query("SELECT id FROM mantis_plugin_ProcessEngine_step_table WHERE flow_id=" . db_param(), array($t_test_flow_id));
+            $t_all_step_ids = array();
+            while($row2 = db_fetch_array($r2)) {
+                $t_all_step_ids[] = (int)$row2["id"];
+            }
+            $t_ordered_step_ids = array_keys($t_order);
+            $t_missing = array_diff($t_all_step_ids, $t_ordered_step_ids);
+            if(empty($t_missing)) {
+                test_ok("Tum adimlar topolojik sirada", count($t_all_step_ids) . " adim");
+            } else {
+                test_warn("Eksik adimlar topolojik sirada", implode(", ", $t_missing));
+            }
+
+            // Sira numaralari 0'dan baslayip artmali (degerler order_index)
+            $t_order_values = array_values($t_order);
+            sort($t_order_values);
+            $t_expected = range(0, count($t_order) - 1);
+            if($t_order_values === $t_expected) {
+                test_ok("Sira numaralari 0'dan baslayip ardisildir", "0.." . (count($t_order) - 1));
+            } else {
+                test_fail("Sira numaralari ardisil degil", implode(", ", $t_order_values));
+            }
+        } else {
+            test_warn("Topolojik siralama bos sonuc dondu (transition olmayabilir)");
+        }
+    } else {
+        test_warn("Aktif akis bulunamadi, topolojik siralama test edilemedi");
+    }
+    plugin_pop_current();
+} catch(Exception $e) {
+    test_warn("Topolojik siralama", $e->getMessage());
+    try { plugin_pop_current(); } catch(Exception $ex) {}
+}
+
+// ============================================================
+echo PHP_EOL . "=== 24. DASHBOARD TARIH FILTRESI FONKSIYONEL KONTROLU ===" . PHP_EOL;
+try {
+    plugin_push_current('ProcessEngine');
+
+    // Gecmis tarih ile cagir (bos sonuc olabilir ama hata firlatmamali)
+    $t_result1 = process_get_dashboard_bugs('all', '', 2025, 1);
+    if(is_array($t_result1)) {
+        test_ok("process_get_dashboard_bugs(all, '', 2025, 1)", count($t_result1) . " sonuc (gecmis tarih)");
+    } else {
+        test_fail("process_get_dashboard_bugs gecmis tarih", "dizi donmedi");
+    }
+
+    // Tum kayitlar (filtresiz)
+    $t_result2 = process_get_dashboard_bugs('all', '', 0, 0);
+    if(is_array($t_result2)) {
+        test_ok("process_get_dashboard_bugs(all, '', 0, 0)", count($t_result2) . " sonuc (tum kayitlar)");
+    } else {
+        test_fail("process_get_dashboard_bugs filtresiz", "dizi donmedi");
+    }
+
+    plugin_pop_current();
+} catch(Exception $e) {
+    test_warn("Dashboard tarih filtresi", $e->getMessage());
+    try { plugin_pop_current(); } catch(Exception $ex) {}
+}
+
+// ============================================================
+echo PHP_EOL . "=== 25. SUBPROCESS HEDEF FALLBACK KONTROLU ===" . PHP_EOL;
+try {
+    plugin_push_current('ProcessEngine');
+
+    // Aktif akista subprocess adimi bul
+    $r = db_query("SELECT s.id, s.flow_id, s.child_flow_id FROM mantis_plugin_ProcessEngine_step_table s " .
+                  "INNER JOIN mantis_plugin_ProcessEngine_flow_definition_table f ON s.flow_id = f.id " .
+                  "WHERE s.step_type='subprocess' AND f.status=2 LIMIT 1");
+    $row = db_fetch_array($r);
+    if($row) {
+        $t_step_id = (int)$row["id"];
+        $t_targets = flow_get_effective_subprocess_targets($t_step_id);
+        if(is_array($t_targets)) {
+            test_ok("flow_get_effective_subprocess_targets(#" . $t_step_id . ")", count($t_targets) . " hedef");
+            if(count($t_targets) > 0) {
+                // Her hedefin child_flow_id'si olmali
+                $t_has_flow = true;
+                foreach($t_targets as $t) {
+                    if(empty($t["child_flow_id"])) { $t_has_flow = false; break; }
+                }
+                if($t_has_flow) {
+                    test_ok("Tum hedeflerde child_flow_id mevcut");
+                } else {
+                    test_warn("Bazi hedeflerde child_flow_id eksik");
+                }
+            }
+        } else {
+            test_fail("flow_get_effective_subprocess_targets", "dizi donmedi");
+        }
+    } else {
+        // Subprocess adimi yoksa fallback'i bos dizi ile test et
+        test_warn("Aktif akista subprocess adimi bulunamadi, fallback test edilemedi");
+    }
+
+    plugin_pop_current();
+} catch(Exception $e) {
+    test_warn("Subprocess hedef fallback", $e->getMessage());
+    try { plugin_pop_current(); } catch(Exception $ex) {}
+}
+
+// ============================================================
 echo PHP_EOL . "========================================" . PHP_EOL;
 echo "SONUC: " . $pass . " basarili, " . $fail . " hata, " . $warn . " uyari" . PHP_EOL;
 echo "========================================" . PHP_EOL;

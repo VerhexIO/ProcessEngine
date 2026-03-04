@@ -33,6 +33,7 @@ scripts/test_seed.php
 test-results/
 tests/.test-state.json
 tests/.faz11-test-state.json
+tests/.full-e2e-state.json
 
 # Dependencies
 vendor/
