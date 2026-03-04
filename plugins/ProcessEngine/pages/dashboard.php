@@ -19,7 +19,30 @@ layout_page_begin();
 $t_stats = process_get_dashboard_stats();
 $t_filter = gpc_get_string( 'filter', 'all' );
 $t_department = gpc_get_string( 'department', '' );
-$t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
+$t_year = (int) gpc_get_string( 'year', '0' );
+$t_month = (int) gpc_get_string( 'month', '0' );
+$t_bugs = process_get_dashboard_bugs( $t_filter, $t_department, $t_year, $t_month );
+
+// Mevcut yıl/ay seçenekleri için yıl aralığı
+$t_current_year = (int) date( 'Y' );
+$t_year_range = range( $t_current_year - 3, $t_current_year );
+$t_months = array(
+    1 => plugin_lang_get( 'month_january' ),
+    2 => plugin_lang_get( 'month_february' ),
+    3 => plugin_lang_get( 'month_march' ),
+    4 => plugin_lang_get( 'month_april' ),
+    5 => plugin_lang_get( 'month_may' ),
+    6 => plugin_lang_get( 'month_june' ),
+    7 => plugin_lang_get( 'month_july' ),
+    8 => plugin_lang_get( 'month_august' ),
+    9 => plugin_lang_get( 'month_september' ),
+    10 => plugin_lang_get( 'month_october' ),
+    11 => plugin_lang_get( 'month_november' ),
+    12 => plugin_lang_get( 'month_december' ),
+);
+
+// Filtre parametreleri için URL oluşturucu
+$t_base_url = plugin_page( 'dashboard' );
 ?>
 
 <div class="col-md-12 col-xs-12">
@@ -113,13 +136,20 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
         </div>
         <div class="widget-body">
             <div class="widget-toolbox padding-8">
+                <?php
+                // Ortak filtre parametreleri (tarih bilgisi dahil)
+                $t_extra_params = '';
+                if( $t_department !== '' ) { $t_extra_params .= '&department=' . urlencode( $t_department ); }
+                if( $t_year > 0 ) { $t_extra_params .= '&year=' . $t_year; }
+                if( $t_month > 0 ) { $t_extra_params .= '&month=' . $t_month; }
+                ?>
                 <div class="btn-group" style="margin-right: 15px;">
                     <?php
                     $t_filters = array( 'all', 'active', 'sla_exceeded', 'completed' );
                     foreach( $t_filters as $t_f ) {
                         $t_active_class = ( $t_filter === $t_f ) ? 'btn-primary' : 'btn-white';
                         $t_label = plugin_lang_get( 'filter_' . $t_f );
-                        $t_url = plugin_page( 'dashboard' ) . '&filter=' . $t_f . ( $t_department !== '' ? '&department=' . urlencode( $t_department ) : '' );
+                        $t_url = $t_base_url . '&filter=' . $t_f . $t_extra_params;
                         echo '<a href="' . $t_url . '" class="btn btn-sm ' . $t_active_class . '">' . $t_label . '</a> ';
                     }
                     ?>
@@ -129,17 +159,36 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                     <i class="fa fa-refresh"></i> <?php echo plugin_lang_get( 'sla_global_check' ); ?>
                 </button>
                 <?php } ?>
-                <div class="btn-group">
-                    <select id="pe-dept-filter" class="form-control input-sm" style="display:inline-block; width:auto;" onchange="window.location.href='<?php echo plugin_page( 'dashboard' ) . '&filter=' . urlencode( $t_filter ); ?>&department=' + encodeURIComponent(this.value);">
-                        <option value=""><?php echo plugin_lang_get( 'all_departments' ); ?></option>
-                        <?php
-                        foreach( $t_dept_list as $t_dept ) {
-                            $t_selected = ( $t_department === $t_dept ) ? 'selected' : '';
-                            echo '<option value="' . string_attribute( $t_dept ) . '" ' . $t_selected . '>' . string_display_line( $t_dept ) . '</option>';
-                        }
-                        ?>
-                    </select>
-                </div>
+                <?php
+                // Departman ve tarih filtresi değiştirilirken diğer aktif filtreleri koruyacak JS fonksiyonu
+                $t_filter_base = $t_base_url . '&filter=' . urlencode( $t_filter );
+                ?>
+                <select id="pe-dept-filter" class="form-control input-sm" style="display:inline-block; width:auto; margin-right:10px;">
+                    <option value=""><?php echo plugin_lang_get( 'all_departments' ); ?></option>
+                    <?php
+                    foreach( $t_dept_list as $t_dept ) {
+                        $t_selected = ( $t_department === $t_dept ) ? 'selected' : '';
+                        echo '<option value="' . string_attribute( $t_dept ) . '" ' . $t_selected . '>' . string_display_line( $t_dept ) . '</option>';
+                    }
+                    ?>
+                </select>
+                <select id="pe-year-filter" class="form-control input-sm" style="display:inline-block; width:auto; margin-right:5px;">
+                    <option value="0"><?php echo plugin_lang_get( 'all_years' ); ?></option>
+                    <?php foreach( array_reverse( $t_year_range ) as $t_yr ) {
+                        $t_sel = ( $t_year === $t_yr ) ? 'selected' : '';
+                    ?>
+                    <option value="<?php echo $t_yr; ?>" <?php echo $t_sel; ?>><?php echo $t_yr; ?></option>
+                    <?php } ?>
+                </select>
+                <select id="pe-month-filter" class="form-control input-sm" style="display:inline-block; width:auto;">
+                    <option value="0"><?php echo plugin_lang_get( 'all_months' ); ?></option>
+                    <?php foreach( $t_months as $t_mv => $t_ml ) {
+                        $t_sel = ( $t_month === $t_mv ) ? 'selected' : '';
+                    ?>
+                    <option value="<?php echo $t_mv; ?>" <?php echo $t_sel; ?>><?php echo $t_ml; ?></option>
+                    <?php } ?>
+                </select>
+                <input type="hidden" id="pe-filter-base-url" value="<?php echo string_attribute( $t_filter_base ); ?>" />
             </div>
             <div class="widget-main no-padding">
                 <div class="table-responsive">
@@ -148,6 +197,7 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                             <tr>
                                 <th><?php echo plugin_lang_get( 'col_bug_id' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_summary' ); ?></th>
+                                <th><?php echo plugin_lang_get( 'col_date_submitted' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_current_step' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_department' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_progress' ); ?></th>
@@ -163,7 +213,7 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                         <tbody>
                             <?php
                             $t_can_action = access_has_global_level( plugin_config_get( 'action_threshold' ) );
-                            $t_colspan = $t_can_action ? 10 : 9;
+                            $t_colspan = $t_can_action ? 11 : 10;
                             ?>
                             <?php if( empty( $t_bugs ) ) { ?>
                             <tr>
@@ -190,6 +240,7 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                     </a>
                                 </td>
                                 <td><?php echo string_display_line( $t_bug_row['summary'] ); ?></td>
+                                <td><?php echo date( 'd.m.Y H:i', isset( $t_bug_row['date_submitted'] ) ? (int) $t_bug_row['date_submitted'] : 0 ); ?></td>
                                 <td>
                                     <?php
                                     if( $t_inst_status === 'WAITING' ) {

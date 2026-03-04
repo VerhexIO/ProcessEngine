@@ -371,3 +371,20 @@ $s_plugin_ProcessEngine_multi_target_info = 'This step has multiple subprocess t
 $s_plugin_ProcessEngine_no_targets_defined = 'No subprocess targets defined.';
 $s_plugin_ProcessEngine_target_flow = 'Target Flow';
 $s_plugin_ProcessEngine_target_project = 'Target Project';
+
+# Date Filter and Month Names
+$s_plugin_ProcessEngine_col_date_submitted = 'Date Submitted';
+$s_plugin_ProcessEngine_all_years = 'All Years';
+$s_plugin_ProcessEngine_all_months = 'All Months';
+$s_plugin_ProcessEngine_month_january = 'January';
+$s_plugin_ProcessEngine_month_february = 'February';
+$s_plugin_ProcessEngine_month_march = 'March';
+$s_plugin_ProcessEngine_month_april = 'April';
+$s_plugin_ProcessEngine_month_may = 'May';
+$s_plugin_ProcessEngine_month_june = 'June';
+$s_plugin_ProcessEngine_month_july = 'July';
+$s_plugin_ProcessEngine_month_august = 'August';
+$s_plugin_ProcessEngine_month_september = 'September';
+$s_plugin_ProcessEngine_month_october = 'October';
+$s_plugin_ProcessEngine_month_november = 'November';
+$s_plugin_ProcessEngine_month_december = 'December';

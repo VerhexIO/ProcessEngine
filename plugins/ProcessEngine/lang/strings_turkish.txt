@@ -371,3 +371,20 @@ $s_plugin_ProcessEngine_multi_target_info = 'Bu adım birden fazla alt süreç h
 $s_plugin_ProcessEngine_no_targets_defined = 'Alt süreç hedefi tanımlanmamış.';
 $s_plugin_ProcessEngine_target_flow = 'Hedef Akış';
 $s_plugin_ProcessEngine_target_project = 'Hedef Proje';
+
+# Tarih Filtresi ve Ay İsimleri
+$s_plugin_ProcessEngine_col_date_submitted = 'Açılma Tarihi';
+$s_plugin_ProcessEngine_all_years = 'Tüm Yıllar';
+$s_plugin_ProcessEngine_all_months = 'Tüm Aylar';
+$s_plugin_ProcessEngine_month_january = 'Ocak';
+$s_plugin_ProcessEngine_month_february = 'Şubat';
+$s_plugin_ProcessEngine_month_march = 'Mart';
+$s_plugin_ProcessEngine_month_april = 'Nisan';
+$s_plugin_ProcessEngine_month_may = 'Mayıs';
+$s_plugin_ProcessEngine_month_june = 'Haziran';
+$s_plugin_ProcessEngine_month_july = 'Temmuz';
+$s_plugin_ProcessEngine_month_august = 'Ağustos';
+$s_plugin_ProcessEngine_month_september = 'Eylül';
+$s_plugin_ProcessEngine_month_october = 'Ekim';
+$s_plugin_ProcessEngine_month_november = 'Kasım';
+$s_plugin_ProcessEngine_month_december = 'Aralık';

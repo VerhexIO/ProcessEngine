@@ -15,12 +15,13 @@ require_once( dirname( __DIR__ ) . '/core/flow_api.php' );
 // Filtreleri oku
 $t_date_from_str = gpc_get_string( 'date_from', '' );
 $t_date_to_str   = gpc_get_string( 'date_to', '' );
-$t_project_id    = gpc_get_int( 'project_id', 0 );
+$t_project_id    = (int) gpc_get_string( 'project_id', '0' );
 $t_department    = gpc_get_string( 'department', '' );
-$t_flow_id       = gpc_get_int( 'flow_id', 0 );
+$t_flow_id       = (int) gpc_get_string( 'flow_id', '0' );
 $t_status_filter = gpc_get_string( 'status', '' );
-$t_page          = gpc_get_int( 'page', 1 );
-$t_csv           = gpc_get_bool( 'csv', false );
+$t_page_raw      = gpc_get_string( 'page', '1' );
+$t_page          = max( 1, (int) $t_page_raw );
+$t_csv           = ( gpc_get_string( 'csv', '' ) !== '' );
 
 $t_date_from = 0;
 $t_date_to = 0;

@@ -11,18 +11,26 @@
     var refreshTimer = null;
 
     function initDashboard() {
-        // Highlight active filter button
-        var filterBtns = document.querySelectorAll('.widget-toolbox .btn-group .btn');
-        filterBtns.forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                filterBtns.forEach(function(b) {
-                    b.classList.remove('btn-primary');
-                    b.classList.add('btn-white');
-                });
-                this.classList.remove('btn-white');
-                this.classList.add('btn-primary');
-            });
-        });
+        // Filtre select'leri değiştirildiğinde URL güncelle
+        function applyFilters() {
+            var baseEl = document.getElementById('pe-filter-base-url');
+            if (!baseEl) return;
+            var url = baseEl.value;
+            var dept = document.getElementById('pe-dept-filter');
+            var year = document.getElementById('pe-year-filter');
+            var month = document.getElementById('pe-month-filter');
+            if (dept && dept.value) { url += '&department=' + encodeURIComponent(dept.value); }
+            if (year && year.value !== '0') { url += '&year=' + year.value; }
+            if (month && month.value !== '0') { url += '&month=' + month.value; }
+            window.location.href = url;
+        }
+
+        var deptFilter = document.getElementById('pe-dept-filter');
+        if (deptFilter) { deptFilter.addEventListener('change', applyFilters); }
+        var yearFilter = document.getElementById('pe-year-filter');
+        if (yearFilter) { yearFilter.addEventListener('change', applyFilters); }
+        var monthFilter = document.getElementById('pe-month-filter');
+        if (monthFilter) { monthFilter.addEventListener('change', applyFilters); }
 
         // Setup action buttons (dashboard)
         initActionButtons();

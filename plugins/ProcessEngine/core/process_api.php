@@ -1159,7 +1159,7 @@ function process_get_monthly_trend( $p_filters ) {
  * @param string $p_filter Filter type: 'all', 'active', 'sla_exceeded', 'completed'
  * @return array Array of bug process data
  */
-function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '' ) {
+function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '', $p_year = 0, $p_month = 0 ) {
     $t_log_table = plugin_table( 'log' );
     $t_step_table = plugin_table( 'step' );
     $t_sla_table = plugin_table( 'sla_tracking' );
@@ -1176,20 +1176,39 @@ function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '' ) {
     $t_project_ids = array_map( 'intval', $t_accessible_projects );
     $t_project_in = implode( ',', $t_project_ids );
 
+    // Tarih filtresi — yıl/ay bazlı (bug açılma tarihi: date_submitted)
+    $t_date_where = '';
+    $t_date_params = array();
+    if( (int) $p_year > 0 ) {
+        if( (int) $p_month > 0 ) {
+            $t_start = mktime( 0, 0, 0, (int) $p_month, 1, (int) $p_year );
+            $t_end = mktime( 23, 59, 59, (int) $p_month + 1, 0, (int) $p_year );
+        } else {
+            $t_start = mktime( 0, 0, 0, 1, 1, (int) $p_year );
+            $t_end = mktime( 23, 59, 59, 12, 31, (int) $p_year );
+        }
+        $t_date_params = array( $t_start, $t_end );
+    }
+
     // Get latest log entry per bug — proje filtreli
+    if( !empty( $t_date_params ) ) {
+        db_param_push();
+        $t_date_where = " AND b.date_submitted >= " . db_param() . " AND b.date_submitted <= " . db_param();
+    }
     $t_query = "SELECT l.bug_id, l.flow_id, l.step_id, l.to_status, l.created_at,
             COALESCE(s.name, '') AS step_name,
-            COALESCE(s.department, '') AS department
+            COALESCE(s.department, '') AS department,
+            b.date_submitted
         FROM $t_log_table l
         INNER JOIN (
             SELECT bug_id, MAX(id) AS max_id FROM $t_log_table GROUP BY bug_id
         ) latest ON l.id = latest.max_id
         INNER JOIN $t_bug_table b ON l.bug_id = b.id
         LEFT JOIN $t_step_table s ON l.step_id = s.id
-        WHERE b.project_id IN ($t_project_in)
+        WHERE b.project_id IN ($t_project_in)" . $t_date_where . "
         ORDER BY l.created_at DESC";
 
-    $t_result = db_query( $t_query );
+    $t_result = db_query( $t_query, $t_date_params );
     $t_bugs = array();
 
     $t_view_threshold = plugin_config_get( 'view_threshold' );
@@ -1309,6 +1328,7 @@ function process_get_dashboard_bugs( $p_filter = 'all', $p_department = '' ) {
             'department'      => $t_row['department'],
             'sla_status'      => $t_sla_status,
             'updated_at'      => $t_row['created_at'],
+            'date_submitted'  => isset( $t_row['date_submitted'] ) ? (int) $t_row['date_submitted'] : (int) $t_bug->date_submitted,
             'bug_status'      => $t_status,
             'progress_pct'    => $t_progress_pct,
             'handler_name'    => $t_handler_name,
