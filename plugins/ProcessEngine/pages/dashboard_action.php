@@ -49,11 +49,16 @@ switch( $t_action ) {
         break;
 
     case 'create_subprocess':
-        $t_response = pe_action_create_subprocess( $t_bug_id );
+        $t_target_id = gpc_get_int( 'target_id', 0 );
+        $t_response = pe_action_create_subprocess( $t_bug_id, $t_target_id );
         break;
 
     case 'link_manual_child':
         $t_response = pe_action_link_manual_child( $t_bug_id );
+        break;
+
+    case 'rollback_step':
+        $t_response = pe_action_rollback_step( $t_bug_id );
         break;
 
     case 'global_sla_check':
@@ -209,7 +214,7 @@ function pe_action_advance_step( $p_bug_id ) {
  * @param int $p_bug_id Parent bug ID
  * @return array Response array
  */
-function pe_action_create_subprocess( $p_bug_id ) {
+function pe_action_create_subprocess( $p_bug_id, $p_target_id = 0 ) {
     $t_instance = subprocess_get_instance( $p_bug_id );
     if( $t_instance === null ) {
         return array( 'success' => false, 'message' => plugin_lang_get( 'no_data' ) );
@@ -228,12 +233,24 @@ function pe_action_create_subprocess( $p_bug_id ) {
         return array( 'success' => false, 'message' => plugin_lang_get( 'manual_link_not_subprocess' ) );
     }
 
-    $t_child_flow_id = isset( $t_step['child_flow_id'] ) ? (int) $t_step['child_flow_id'] : 0;
+    // Hedefi belirle: target_id varsa subprocess_target tablosundan oku, yoksa eski alanlara fallback
+    require_once( dirname( __DIR__ ) . '/core/flow_api.php' );
+    if( $p_target_id > 0 ) {
+        $t_target = flow_get_subprocess_target( $p_target_id );
+        if( $t_target === null || (int) $t_target['step_id'] !== $t_current_step_id ) {
+            return array( 'success' => false, 'message' => plugin_lang_get( 'subprocess_invalid_flow' ) );
+        }
+        $t_child_flow_id = (int) $t_target['child_flow_id'];
+        $t_child_project_id = (int) $t_target['child_project_id'];
+    } else {
+        $t_child_flow_id = isset( $t_step['child_flow_id'] ) ? (int) $t_step['child_flow_id'] : 0;
+        $t_child_project_id = isset( $t_step['child_project_id'] ) ? (int) $t_step['child_project_id'] : 0;
+    }
+
     if( $t_child_flow_id <= 0 ) {
         return array( 'success' => false, 'message' => plugin_lang_get( 'subprocess_invalid_flow' ) );
     }
 
-    $t_child_project_id = isset( $t_step['child_project_id'] ) ? (int) $t_step['child_project_id'] : 0;
     if( $t_child_project_id <= 0 ) {
         $t_child_project_id = bug_get_field( $p_bug_id, 'project_id' );
     }
@@ -410,4 +427,125 @@ function pe_action_global_sla_check() {
     }
 
     return array( 'success' => true, 'message' => plugin_lang_get( 'sla_global_check_done' ) );
+}
+
+/**
+ * Rollback a bug to its previous process step.
+ *
+ * @param int $p_bug_id Bug ID
+ * @return array Response array
+ */
+function pe_action_rollback_step( $p_bug_id ) {
+    $t_instance = subprocess_get_instance( $p_bug_id );
+    if( $t_instance === null ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'no_data' ) );
+    }
+
+    $t_flow_id = (int) $t_instance['flow_id'];
+    $t_current_step_id = (int) $t_instance['current_step_id'];
+    $t_instance_id = (int) $t_instance['id'];
+    $t_inst_status = isset( $t_instance['status'] ) ? $t_instance['status'] : 'ACTIVE';
+
+    // Sadece ACTIVE, WAITING veya COMPLETED durumda geri alma yapılabilir
+    if( !in_array( $t_inst_status, array( 'ACTIVE', 'WAITING', 'COMPLETED' ) ) ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'action_rollback_no_prev' ) );
+    }
+
+    // Log tablosundan son step_advanced kaydını bul — from_status = önceki MantisBT durumu
+    $t_log_table = plugin_table( 'log' );
+    db_param_push();
+    $t_log_query = "SELECT * FROM $t_log_table
+        WHERE bug_id = " . db_param() . "
+        AND event_type = 'step_advanced'
+        ORDER BY id DESC LIMIT 1";
+    $t_log_result = db_query( $t_log_query, array( $p_bug_id ) );
+    $t_last_advance = db_fetch_array( $t_log_result );
+
+    if( $t_last_advance === false ) {
+        // Başlangıç adımı — geri alınamaz
+        return array( 'success' => false, 'message' => plugin_lang_get( 'action_rollback_no_prev' ) );
+    }
+
+    $t_prev_mantis_status = (int) $t_last_advance['from_status'];
+
+    // Önceki adımı bul (from_status değerine göre)
+    $t_prev_step = process_find_step_by_status( $t_flow_id, $t_prev_mantis_status );
+    if( $t_prev_step === null ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'action_rollback_no_prev' ) );
+    }
+
+    $t_prev_step_id = (int) $t_prev_step['id'];
+    $t_old_mantis_status = (int) bug_get_field( $p_bug_id, 'status' );
+
+    // COMPLETED instance ise ACTIVE'e döndür
+    if( $t_inst_status === 'COMPLETED' ) {
+        subprocess_update_instance_status( $t_instance_id, INSTANCE_STATUS_ACTIVE );
+        // completed_at'ı NULL yap
+        $t_inst_table = plugin_table( 'process_instance' );
+        db_param_push();
+        db_query(
+            "UPDATE $t_inst_table SET completed_at = NULL WHERE id = " . db_param(),
+            array( $t_instance_id )
+        );
+    }
+
+    // WAITING durumundan geri alma — önce ACTIVE'e al
+    if( $t_inst_status === 'WAITING' ) {
+        subprocess_update_instance_status( $t_instance_id, INSTANCE_STATUS_ACTIVE );
+    }
+
+    // 1. Bug durumunu önceki adımın mantis_status değerine güncelle (doğrudan DB)
+    $t_bug_table = db_get_table( 'bug' );
+    db_param_push();
+    db_query(
+        "UPDATE $t_bug_table SET status = " . db_param() . ", last_updated = " . db_param()
+        . " WHERE id = " . db_param(),
+        array( $t_prev_mantis_status, time(), $p_bug_id )
+    );
+
+    // MantisBT history kaydı
+    history_log_event_direct( $p_bug_id, 'status', $t_old_mantis_status, $t_prev_mantis_status );
+
+    // 2. Instance current_step_id güncelle (önceki adıma)
+    subprocess_update_current_step( $t_instance_id, $t_prev_step_id );
+
+    // 3. SLA yönetimi: mevcut SLA'yı kapat + önceki adımın SLA'sı varsa yeniden başlat
+    sla_complete_tracking( $p_bug_id );
+    if( (int) $t_prev_step['sla_hours'] > 0 ) {
+        sla_start_tracking( $p_bug_id, $t_prev_step_id, $t_flow_id, (int) $t_prev_step['sla_hours'] );
+    }
+
+    // 4. Process log kaydı yaz (event_type = step_rollback)
+    db_param_push();
+    db_query(
+        "INSERT INTO $t_log_table (bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at, event_type, transition_label)
+         VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . ")",
+        array(
+            $p_bug_id,
+            $t_flow_id,
+            $t_prev_step_id,
+            $t_old_mantis_status,
+            $t_prev_mantis_status,
+            auth_get_current_user_id(),
+            plugin_lang_get( 'rollback_log_note' ),
+            time(),
+            'step_rollback',
+            '',
+        )
+    );
+
+    // 5. Önceki adımın handler_id'si varsa handler ata
+    if( isset( $t_prev_step['handler_id'] ) && (int) $t_prev_step['handler_id'] > 0
+        && user_exists( (int) $t_prev_step['handler_id'] )
+    ) {
+        db_param_push();
+        db_query(
+            "UPDATE $t_bug_table SET handler_id = " . db_param() . " WHERE id = " . db_param(),
+            array( (int) $t_prev_step['handler_id'], $p_bug_id )
+        );
+    }
+
+    return array( 'success' => true, 'message' => plugin_lang_get( 'action_rollback_success' ) );
 }

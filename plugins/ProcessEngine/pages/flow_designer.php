@@ -179,6 +179,12 @@ if( $t_flow_id === 0 ) {
     $t_steps = flow_get_steps( $t_flow_id );
     $t_transitions = flow_get_transitions( $t_flow_id );
 
+    // Her adıma subprocess_targets verisini ekle
+    foreach( $t_steps as &$t_s ) {
+        $t_s['subprocess_targets'] = flow_get_subprocess_targets( (int) $t_s['id'] );
+    }
+    unset( $t_s );
+
     // MantisBT status enum for dropdown
     $t_status_enum = MantisEnum::getAssocArrayIndexedByValues( config_get( 'status_enum_string' ) );
 ?>
@@ -369,19 +375,26 @@ if( $t_flow_id === 0 ) {
                 </div>
                 <div id="pe-subprocess-fields" style="display:none;">
                     <div class="form-group">
+                        <label><?php echo plugin_lang_get( 'subprocess_targets' ); ?></label>
+                        <div id="pe-subprocess-targets-list"></div>
+                        <button type="button" id="pe-btn-add-target" class="btn btn-xs btn-success" style="margin-top:5px;">
+                            <i class="fa fa-plus"></i> <?php echo plugin_lang_get( 'add_target' ); ?>
+                        </button>
+                    </div>
+                    <div class="form-group" id="pe-legacy-subprocess-fields" style="display:none;">
                         <label><?php echo plugin_lang_get( 'child_flow' ); ?></label>
                         <select id="pe-modal-child-flow" class="form-control input-sm">
                             <option value="0">--</option>
                             <?php
                             $t_all_flows = flow_get_all();
                             foreach( $t_all_flows as $t_af ) {
-                                if( (int) $t_af['id'] === $t_flow_id ) continue; // Kendisini hariç tut
+                                if( (int) $t_af['id'] === $t_flow_id ) continue;
                             ?>
                             <option value="<?php echo (int) $t_af['id']; ?>"><?php echo string_display_line( $t_af['name'] ); ?></option>
                             <?php } ?>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="pe-legacy-subprocess-project" style="display:none;">
                         <label><?php echo plugin_lang_get( 'child_project' ); ?></label>
                         <select id="pe-modal-child-project" class="form-control input-sm">
                             <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
@@ -398,6 +411,29 @@ if( $t_flow_id === 0 ) {
                         </select>
                     </div>
                 </div>
+                <!-- Subprocess hedef şablonları (JS tarafından kullanılır) -->
+                <script type="text/template" id="pe-target-row-template">
+                    <div class="pe-target-row" style="border:1px solid #ddd; padding:5px; margin-bottom:5px; border-radius:3px; background:#f9f9f9;">
+                        <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                            <input type="text" class="form-control input-sm pe-target-label" placeholder="<?php echo string_attribute( plugin_lang_get( 'target_label_placeholder' ) ); ?>" style="width:120px;" />
+                            <select class="form-control input-sm pe-target-flow" style="width:180px;">
+                                <option value="0">-- <?php echo plugin_lang_get( 'child_flow' ); ?> --</option>
+                                <?php foreach( $t_all_flows as $t_af ) {
+                                    if( (int) $t_af['id'] === $t_flow_id ) continue;
+                                ?>
+                                <option value="<?php echo (int) $t_af['id']; ?>"><?php echo string_display_line( $t_af['name'] ); ?></option>
+                                <?php } ?>
+                            </select>
+                            <select class="form-control input-sm pe-target-project" style="width:150px;">
+                                <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
+                                <?php foreach( $t_projects as $t_proj ) { ?>
+                                <option value="<?php echo (int) $t_proj['id']; ?>"><?php echo string_display_line( $t_proj['name'] ); ?></option>
+                                <?php } ?>
+                            </select>
+                            <button type="button" class="btn btn-xs btn-danger pe-target-remove"><i class="fa fa-trash"></i></button>
+                        </div>
+                    </div>
+                </script>
 
                 <hr style="margin: 10px 0;" />
 

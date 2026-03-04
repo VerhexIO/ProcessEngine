@@ -249,6 +249,16 @@ function process_get_flow_progress( $p_bug_id ) {
         return null;
     }
 
+    // Topolojik sıraya göre adımları düzenle
+    $t_topo = flow_compute_topological_order( (int) $t_flow['id'] );
+    if( !empty( $t_topo ) ) {
+        usort( $t_steps, function( $a, $b ) use ( $t_topo ) {
+            $t_oa = isset( $t_topo[(int) $a['id']] ) ? $t_topo[(int) $a['id']] : 999;
+            $t_ob = isset( $t_topo[(int) $b['id']] ) ? $t_topo[(int) $b['id']] : 999;
+            return $t_oa - $t_ob;
+        } );
+    }
+
     // Sürecin geçtiği tüm durum loglarını al
     $t_logs = process_get_logs_for_bug( $p_bug_id );
     $t_visited_step_ids = array();

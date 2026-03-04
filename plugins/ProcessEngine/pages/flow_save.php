@@ -62,6 +62,12 @@ if( $t_id_map === false ) {
 $t_new_steps = flow_get_steps( $t_flow_id );
 $t_new_transitions = flow_get_transitions( $t_flow_id );
 
+// Her adıma subprocess_targets verisini ekle
+foreach( $t_new_steps as &$t_ns ) {
+    $t_ns['subprocess_targets'] = flow_get_subprocess_targets( (int) $t_ns['id'] );
+}
+unset( $t_ns );
+
 echo json_encode( array(
     'success'      => true,
     'id_map'       => $t_id_map,

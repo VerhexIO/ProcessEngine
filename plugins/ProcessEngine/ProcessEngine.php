@@ -309,6 +309,18 @@ class ProcessEnginePlugin extends MantisPlugin {
             array( plugin_table( 'step' ), "step_instructions XL DEFAULT NULL" )
         );
 
+        // 28: subprocess_target table — çoklu hedef desteği
+        $t_schema[] = array(
+            'CreateTableSQL',
+            array( plugin_table( 'subprocess_target' ), "
+                id               I       NOTNULL UNSIGNED AUTOINCREMENT PRIMARY,
+                step_id          I       NOTNULL UNSIGNED,
+                child_flow_id    I       NOTNULL UNSIGNED,
+                child_project_id I       NOTNULL UNSIGNED DEFAULT '0',
+                target_label     C(128)  NOTNULL DEFAULT ''
+            " )
+        );
+
         return $t_schema;
     }
 
@@ -733,12 +745,16 @@ class ProcessEnginePlugin extends MantisPlugin {
         $t_subprocess_show_panel = false;
         $t_subprocess_target_project = '';
         $t_subprocess_children = array();
+        $t_subprocess_targets = array();
         if( $t_current_is_subprocess && $p_instance !== null ) {
             require_once( __DIR__ . '/core/subprocess_api.php' );
+            require_once( __DIR__ . '/core/flow_api.php' );
             $t_subprocess_children = subprocess_get_children( (int) $p_instance['id'], (int) $p_instance['current_step_id'] );
             // Subprocess adımında her zaman paneli göster (çocuk olsun/olmasın)
             $t_subprocess_show_panel = true;
-            // Hedef proje adını bul
+            // Çoklu hedefleri al
+            $t_subprocess_targets = flow_get_effective_subprocess_targets( (int) $p_instance['current_step_id'] );
+            // Hedef proje adını bul (eski tek hedef için geriye uyumluluk)
             $t_sp_project_id = isset( $t_current_step_data['child_project_id'] ) ? (int) $t_current_step_data['child_project_id'] : 0;
             if( $t_sp_project_id > 0 && project_exists( $t_sp_project_id ) ) {
                 $t_subprocess_target_project = project_get_name( $t_sp_project_id );
@@ -856,12 +872,49 @@ class ProcessEnginePlugin extends MantisPlugin {
                             <li><strong><?php echo plugin_lang_get( 'subprocess_guide_skip' ); ?></strong></li>
                         </ul>
                     </div>
+                    <?php if( count( $t_subprocess_targets ) > 1 ) { ?>
+                    <div class="pe-multi-target-info">
+                        <strong><?php echo plugin_lang_get( 'subprocess_targets' ); ?>:</strong>
+                        <?php foreach( $t_subprocess_targets as $t_tgt ) {
+                            $t_tgt_flow_name = '';
+                            $t_tgt_project_name = '';
+                            $t_tgt_flow = flow_get( (int) $t_tgt['child_flow_id'] );
+                            if( $t_tgt_flow !== null ) {
+                                $t_tgt_flow_name = $t_tgt_flow['name'];
+                            }
+                            $t_tgt_pid = (int) $t_tgt['child_project_id'];
+                            if( $t_tgt_pid > 0 && project_exists( $t_tgt_pid ) ) {
+                                $t_tgt_project_name = project_get_name( $t_tgt_pid );
+                            }
+                            $t_tgt_label = !empty( $t_tgt['target_label'] ) ? $t_tgt['target_label'] : $t_tgt_flow_name;
+                            $t_tgt_id = isset( $t_tgt['id'] ) ? (int) $t_tgt['id'] : 0;
+                        ?>
+                        <div class="pe-target-action-row" style="margin:5px 0; padding:5px; border:1px solid #eee; border-radius:3px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <span><strong><?php echo string_display_line( $t_tgt_label ); ?></strong></span>
+                            <?php if( $t_tgt_project_name !== '' ) { ?>
+                            <span class="pe-target-project-badge" style="font-size:11px; color:#666;">(<?php echo string_display_line( $t_tgt_project_name ); ?>)</span>
+                            <?php } ?>
+                            <button class="btn btn-xs btn-warning pe-create-subprocess"
+                                    data-bug-id="<?php echo (int) $p_bug_id; ?>"
+                                    data-target-id="<?php echo $t_tgt_id; ?>">
+                                <i class="fa fa-plus-circle"></i> <?php echo plugin_lang_get( 'btn_create_subprocess' ); ?>
+                            </button>
+                            <span class="pe-or-divider"><?php echo plugin_lang_get( 'or' ); ?></span>
+                            <input type="text" class="pe-link-child-input" placeholder="<?php echo plugin_lang_get( 'link_child_placeholder' ); ?>" data-bug-id="<?php echo (int) $p_bug_id; ?>" style="width:80px;" />
+                            <button class="btn btn-xs btn-default pe-link-child-btn" data-bug-id="<?php echo (int) $p_bug_id; ?>">
+                                <i class="fa fa-link"></i> <?php echo plugin_lang_get( 'btn_link_child' ); ?>
+                            </button>
+                        </div>
+                        <?php } ?>
+                    </div>
+                    <?php } else { ?>
                     <div class="pe-target-info">
                         <?php echo plugin_lang_get( 'child_project' ); ?>: <strong><?php echo string_display_line( $t_subprocess_target_project ); ?></strong>
                     </div>
                     <div class="pe-subprocess-actions">
                         <button class="btn btn-sm btn-warning pe-create-subprocess"
-                                data-bug-id="<?php echo (int) $p_bug_id; ?>">
+                                data-bug-id="<?php echo (int) $p_bug_id; ?>"
+                                data-target-id="<?php echo ( !empty( $t_subprocess_targets ) && isset( $t_subprocess_targets[0]['id'] ) ) ? (int) $t_subprocess_targets[0]['id'] : 0; ?>">
                             <i class="fa fa-plus-circle"></i> <?php echo plugin_lang_get( 'btn_create_subprocess' ); ?>
                         </button>
                         <span class="pe-or-divider"><?php echo plugin_lang_get( 'or' ); ?></span>
@@ -870,6 +923,7 @@ class ProcessEnginePlugin extends MantisPlugin {
                             <i class="fa fa-link"></i> <?php echo plugin_lang_get( 'btn_link_child' ); ?>
                         </button>
                     </div>
+                    <?php } ?>
                 </div>
                 <?php } ?>
                 <div class="pe-info-actions">
@@ -880,6 +934,12 @@ class ProcessEnginePlugin extends MantisPlugin {
                     </span>
                     <?php } ?>
                     <?php if( $t_show_advance ) { ?>
+                    <button class="btn btn-sm btn-default pe-bugview-rollback"
+                            data-bug-id="<?php echo (int) $p_bug_id; ?>"
+                            title="<?php echo string_attribute( plugin_lang_get( 'action_rollback_confirm' ) ); ?>">
+                        <i class="fa fa-backward"></i>
+                        <?php echo plugin_lang_get( 'btn_rollback_step' ); ?>
+                    </button>
                     <button class="btn btn-sm btn-primary pe-bugview-advance"
                             data-bug-id="<?php echo (int) $p_bug_id; ?>"
                             data-is-subprocess="<?php echo $t_next_is_subprocess ? '1' : '0'; ?>"
@@ -1235,6 +1295,7 @@ class ProcessEnginePlugin extends MantisPlugin {
             'process_started'      => array( 'icon' => 'fa-play-circle',         'color' => '#3498db' ),
             'status_change'        => array( 'icon' => 'fa-exchange',            'color' => '#2ecc71' ),
             'step_advanced'        => array( 'icon' => 'fa-forward',             'color' => '#27ae60' ),
+            'step_rollback'        => array( 'icon' => 'fa-backward',            'color' => '#e74c3c' ),
             'subprocess_created'   => array( 'icon' => 'fa-sitemap',             'color' => '#9b59b6' ),
             'subprocess_completed' => array( 'icon' => 'fa-check-circle',        'color' => '#8e44ad' ),
             'parent_advanced'      => array( 'icon' => 'fa-level-up',            'color' => '#2980b9' ),

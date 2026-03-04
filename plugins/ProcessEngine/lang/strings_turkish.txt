@@ -353,3 +353,21 @@ $s_plugin_ProcessEngine_report_status_sla_exceeded = 'SLA Aşımı';
 # SLA global kontrol
 $s_plugin_ProcessEngine_sla_global_check = 'Tüm SLA Kontrol';
 $s_plugin_ProcessEngine_sla_global_check_done = 'Tüm SLA durumları güncellendi.';
+
+# Adım Geri Alma (Rollback)
+$s_plugin_ProcessEngine_action_rollback_confirm = 'Bu sorunu önceki adıma geri almak istediğinize emin misiniz?';
+$s_plugin_ProcessEngine_action_rollback_success = 'Sorun başarıyla önceki adıma geri alındı.';
+$s_plugin_ProcessEngine_action_rollback_no_prev = 'Bu adımdan geri alınacak önceki adım bulunamadı.';
+$s_plugin_ProcessEngine_btn_rollback_step = 'Adımı Geri Al';
+$s_plugin_ProcessEngine_event_type_step_rollback = 'Adım Geri Alındı';
+$s_plugin_ProcessEngine_rollback_log_note = 'Önceki adıma geri alındı';
+
+# Çoklu Subprocess Hedef
+$s_plugin_ProcessEngine_subprocess_targets = 'Alt Süreç Hedefleri';
+$s_plugin_ProcessEngine_add_target = 'Hedef Ekle';
+$s_plugin_ProcessEngine_target_label_placeholder = 'Etiket (ör: ArGe Süreci)';
+$s_plugin_ProcessEngine_remove_target = 'Hedefi Kaldır';
+$s_plugin_ProcessEngine_multi_target_info = 'Bu adım birden fazla alt süreç hedefine sahip.';
+$s_plugin_ProcessEngine_no_targets_defined = 'Alt süreç hedefi tanımlanmamış.';
+$s_plugin_ProcessEngine_target_flow = 'Hedef Akış';
+$s_plugin_ProcessEngine_target_project = 'Hedef Proje';

@@ -353,3 +353,21 @@ $s_plugin_ProcessEngine_report_status_sla_exceeded = 'SLA Exceeded';
 # SLA global check
 $s_plugin_ProcessEngine_sla_global_check = 'Check All SLA';
 $s_plugin_ProcessEngine_sla_global_check_done = 'All SLA statuses have been updated.';
+
+# Step Rollback
+$s_plugin_ProcessEngine_action_rollback_confirm = 'Are you sure you want to rollback this issue to the previous step?';
+$s_plugin_ProcessEngine_action_rollback_success = 'Issue successfully rolled back to the previous step.';
+$s_plugin_ProcessEngine_action_rollback_no_prev = 'No previous step found to rollback to.';
+$s_plugin_ProcessEngine_btn_rollback_step = 'Rollback Step';
+$s_plugin_ProcessEngine_event_type_step_rollback = 'Step Rolled Back';
+$s_plugin_ProcessEngine_rollback_log_note = 'Rolled back to previous step';
+
+# Multi Subprocess Target
+$s_plugin_ProcessEngine_subprocess_targets = 'Subprocess Targets';
+$s_plugin_ProcessEngine_add_target = 'Add Target';
+$s_plugin_ProcessEngine_target_label_placeholder = 'Label (e.g. R&D Process)';
+$s_plugin_ProcessEngine_remove_target = 'Remove Target';
+$s_plugin_ProcessEngine_multi_target_info = 'This step has multiple subprocess targets.';
+$s_plugin_ProcessEngine_no_targets_defined = 'No subprocess targets defined.';
+$s_plugin_ProcessEngine_target_flow = 'Target Flow';
+$s_plugin_ProcessEngine_target_project = 'Target Project';

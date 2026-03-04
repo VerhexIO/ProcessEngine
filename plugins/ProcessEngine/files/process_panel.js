@@ -32,6 +32,18 @@
     }
 
     function initBugViewActions() {
+        // Geri alma (rollback) — bug view
+        document.querySelectorAll('.pe-bugview-rollback').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var bugId = this.getAttribute('data-bug-id');
+                if (!confirm(this.getAttribute('title') || 'Geri almak istediğinize emin misiniz?')) {
+                    return;
+                }
+                peDoBugViewAction('rollback_step', bugId, this, {});
+            });
+        });
+
         // İlerleme modalı ile adım ilerletme
         document.querySelectorAll('.pe-bugview-advance').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
@@ -50,7 +62,8 @@
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 var bugId = this.getAttribute('data-bug-id');
-                peDoBugViewAction('create_subprocess', bugId, this, {});
+                var targetId = this.getAttribute('data-target-id') || '0';
+                peDoBugViewAction('create_subprocess', bugId, this, { target_id: targetId });
             });
         });
 
@@ -189,6 +202,18 @@
     }
 
     function initActionButtons() {
+        // Adımı Geri Al (Rollback) — dashboard
+        document.querySelectorAll('.pe-action-rollback').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var bugId = this.getAttribute('data-bug-id');
+                if (!confirm(this.getAttribute('title') || 'Geri almak istediğinize emin misiniz?')) {
+                    return;
+                }
+                peDoAction('rollback_step', bugId, this);
+            });
+        });
+
         // Adımı İlerlet
         document.querySelectorAll('.pe-action-advance').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
@@ -290,6 +315,7 @@
         }
         // Bug view sayfasındaki ilerleme/subprocess butonları varsa başlat
         if (document.querySelector('.pe-bugview-advance') ||
+            document.querySelector('.pe-bugview-rollback') ||
             document.querySelector('.pe-create-subprocess') ||
             document.querySelector('.pe-link-child-btn')) {
             initBugViewActions();

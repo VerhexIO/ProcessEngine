@@ -260,6 +260,11 @@ $t_bugs = process_get_dashboard_bugs( $t_filter, $t_department );
                                         <i class="fa fa-hourglass-half"></i>
                                     </span>
                                     <?php } ?>
+                                    <button class="btn btn-xs btn-default pe-action-rollback"
+                                            data-bug-id="<?php echo $t_bug_row['bug_id']; ?>"
+                                            title="<?php echo plugin_lang_get( 'action_rollback_confirm' ); ?>">
+                                        <i class="fa fa-backward"></i>
+                                    </button>
                                     <button class="btn btn-xs btn-primary pe-action-advance"
                                             data-bug-id="<?php echo $t_bug_row['bug_id']; ?>"
                                             title="<?php echo plugin_lang_get( 'action_advance_confirm' ); ?>">

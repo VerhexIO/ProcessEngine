@@ -136,6 +136,7 @@ function flow_delete( $p_flow_id ) {
         return 'referenced';
     }
 
+    flow_delete_subprocess_targets_by_flow( $t_id );
     db_param_push();
     db_query( "DELETE FROM $t_transition_table WHERE flow_id = " . db_param(), array( $t_id ) );
     db_param_push();
@@ -456,16 +457,25 @@ function flow_validate( $p_flow_id ) {
         }
     }
 
-    // 5. Subprocess doğrulaması
+    // 5. Subprocess doğrulaması (çoklu hedef desteği ile)
     foreach( $t_steps as $t_step ) {
         if( isset( $t_step['step_type'] ) && $t_step['step_type'] === 'subprocess' ) {
-            $t_child_flow_id = isset( $t_step['child_flow_id'] ) ? (int) $t_step['child_flow_id'] : 0;
-            if( $t_child_flow_id <= 0 || flow_get( $t_child_flow_id ) === null ) {
+            $t_effective_targets = flow_get_effective_subprocess_targets( (int) $t_step['id'] );
+            if( empty( $t_effective_targets ) ) {
                 $t_errors[] = plugin_lang_get( 'subprocess_invalid_flow' );
-            }
-            $t_child_project_id = isset( $t_step['child_project_id'] ) ? (int) $t_step['child_project_id'] : 0;
-            if( $t_child_project_id > 0 && !project_exists( $t_child_project_id ) ) {
-                $t_errors[] = plugin_lang_get( 'subprocess_invalid_project' );
+            } else {
+                foreach( $t_effective_targets as $t_eff_tgt ) {
+                    $t_eff_flow_id = (int) $t_eff_tgt['child_flow_id'];
+                    if( $t_eff_flow_id <= 0 || flow_get( $t_eff_flow_id ) === null ) {
+                        $t_errors[] = plugin_lang_get( 'subprocess_invalid_flow' );
+                        break;
+                    }
+                    $t_eff_project_id = (int) $t_eff_tgt['child_project_id'];
+                    if( $t_eff_project_id > 0 && !project_exists( $t_eff_project_id ) ) {
+                        $t_errors[] = plugin_lang_get( 'subprocess_invalid_project' );
+                        break;
+                    }
+                }
             }
         }
     }
@@ -563,6 +573,89 @@ function flow_bfs_reachable( $p_start_id, $p_adj ) {
 }
 
 /**
+ * Compute topological order for flow steps using Kahn's algorithm.
+ * Uses the transition graph to determine correct step ordering.
+ *
+ * @param int $p_flow_id Flow ID
+ * @return array Map of step_id => order_index (0-based)
+ */
+function flow_compute_topological_order( $p_flow_id ) {
+    $t_steps = flow_get_steps( $p_flow_id );
+    $t_transitions = flow_get_transitions( $p_flow_id );
+
+    if( empty( $t_steps ) ) {
+        return array();
+    }
+
+    // Build adjacency list and incoming count
+    $t_adj = array();
+    $t_incoming = array();
+    $t_step_orders = array(); // step_id => original step_order (tiebreaker)
+
+    foreach( $t_steps as $t_step ) {
+        $t_id = (int) $t_step['id'];
+        $t_adj[$t_id] = array();
+        $t_incoming[$t_id] = 0;
+        $t_step_orders[$t_id] = isset( $t_step['step_order'] ) ? (int) $t_step['step_order'] : 0;
+    }
+
+    foreach( $t_transitions as $t_tr ) {
+        $t_from = (int) $t_tr['from_step_id'];
+        $t_to = (int) $t_tr['to_step_id'];
+        if( isset( $t_adj[$t_from] ) && isset( $t_incoming[$t_to] ) ) {
+            $t_adj[$t_from][] = $t_to;
+            $t_incoming[$t_to]++;
+        }
+    }
+
+    // Kahn's algorithm: start with nodes that have no incoming edges
+    $t_queue = array();
+    foreach( $t_incoming as $t_id => $t_count ) {
+        if( $t_count === 0 ) {
+            $t_queue[] = $t_id;
+        }
+    }
+    // Sort queue by step_order for deterministic tiebreaking
+    usort( $t_queue, function( $a, $b ) use ( $t_step_orders ) {
+        return $t_step_orders[$a] - $t_step_orders[$b];
+    } );
+
+    $t_order = array();
+    $t_idx = 0;
+
+    while( !empty( $t_queue ) ) {
+        $t_current = array_shift( $t_queue );
+        $t_order[$t_current] = $t_idx++;
+
+        // Collect neighbors and reduce incoming counts
+        $t_next_batch = array();
+        foreach( $t_adj[$t_current] as $t_neighbor ) {
+            $t_incoming[$t_neighbor]--;
+            if( $t_incoming[$t_neighbor] === 0 ) {
+                $t_next_batch[] = $t_neighbor;
+            }
+        }
+        // Sort newly available nodes by step_order (tiebreaker)
+        usort( $t_next_batch, function( $a, $b ) use ( $t_step_orders ) {
+            return $t_step_orders[$a] - $t_step_orders[$b];
+        } );
+        foreach( $t_next_batch as $t_nb ) {
+            $t_queue[] = $t_nb;
+        }
+    }
+
+    // If some nodes were not processed (cycle), assign them high order
+    foreach( $t_steps as $t_step ) {
+        $t_id = (int) $t_step['id'];
+        if( !isset( $t_order[$t_id] ) ) {
+            $t_order[$t_id] = $t_idx++;
+        }
+    }
+
+    return $t_order;
+}
+
+/**
  * Publish a flow: set status to ACTIVE.
  * Deactivates any previously active flow for the same project.
  *
@@ -622,7 +715,8 @@ function flow_save_complete( $p_flow_id, $p_steps, $p_transitions ) {
     $t_transition_table = plugin_table( 'transition' );
     $t_flow_id = (int) $p_flow_id;
 
-    // Delete existing transitions and steps
+    // Delete existing subprocess targets, transitions and steps
+    flow_delete_subprocess_targets_by_flow( $t_flow_id );
     db_param_push();
     db_query( "DELETE FROM $t_transition_table WHERE flow_id = " . db_param(), array( $t_flow_id ) );
     db_param_push();
@@ -662,6 +756,165 @@ function flow_save_complete( $p_flow_id, $p_steps, $p_transitions ) {
         );
     }
 
+    // Topolojik sıralama hesapla ve step_order güncelle
+    $t_topo = flow_compute_topological_order( $t_flow_id );
+    if( !empty( $t_topo ) ) {
+        $t_step_table_up = plugin_table( 'step' );
+        foreach( $t_topo as $t_step_id => $t_order_idx ) {
+            db_param_push();
+            db_query(
+                "UPDATE $t_step_table_up SET step_order = " . db_param() . " WHERE id = " . db_param(),
+                array( $t_order_idx, (int) $t_step_id )
+            );
+        }
+    }
+
+    // Subprocess hedeflerini kaydet (çoklu hedef desteği)
+    foreach( $p_steps as $t_step ) {
+        $t_temp_id = isset( $t_step['temp_id'] ) ? $t_step['temp_id'] : '';
+        $t_real_step_id = isset( $t_id_map[$t_temp_id] ) ? $t_id_map[$t_temp_id] : 0;
+        if( $t_real_step_id <= 0 ) {
+            continue;
+        }
+        if( isset( $t_step['subprocess_targets'] ) && is_array( $t_step['subprocess_targets'] ) && !empty( $t_step['subprocess_targets'] ) ) {
+            foreach( $t_step['subprocess_targets'] as $t_target ) {
+                flow_add_subprocess_target(
+                    $t_real_step_id,
+                    isset( $t_target['child_flow_id'] ) ? (int) $t_target['child_flow_id'] : 0,
+                    isset( $t_target['child_project_id'] ) ? (int) $t_target['child_project_id'] : 0,
+                    isset( $t_target['target_label'] ) ? $t_target['target_label'] : ''
+                );
+            }
+        }
+    }
+
     flow_touch( $t_flow_id );
     return $t_id_map;
+}
+
+// ---- Subprocess Target CRUD ----
+
+/**
+ * Get all subprocess targets for a step.
+ *
+ * @param int $p_step_id Step ID
+ * @return array Array of target rows
+ */
+function flow_get_subprocess_targets( $p_step_id ) {
+    $t_table = plugin_table( 'subprocess_target' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT * FROM $t_table WHERE step_id = " . db_param() . " ORDER BY id ASC",
+        array( (int) $p_step_id )
+    );
+    $t_targets = array();
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_targets[] = $t_row;
+    }
+    return $t_targets;
+}
+
+/**
+ * Get a single subprocess target by ID.
+ *
+ * @param int $p_target_id Target ID
+ * @return array|null Target row or null
+ */
+function flow_get_subprocess_target( $p_target_id ) {
+    $t_table = plugin_table( 'subprocess_target' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT * FROM $t_table WHERE id = " . db_param(),
+        array( (int) $p_target_id )
+    );
+    $t_row = db_fetch_array( $t_result );
+    return ( $t_row !== false ) ? $t_row : null;
+}
+
+/**
+ * Add a subprocess target to a step.
+ *
+ * @param int $p_step_id Step ID
+ * @param int $p_child_flow_id Child flow ID
+ * @param int $p_child_project_id Child project ID
+ * @param string $p_target_label Label
+ * @return int New target ID
+ */
+function flow_add_subprocess_target( $p_step_id, $p_child_flow_id, $p_child_project_id = 0, $p_target_label = '' ) {
+    $t_table = plugin_table( 'subprocess_target' );
+    db_param_push();
+    db_query(
+        "INSERT INTO $t_table (step_id, child_flow_id, child_project_id, target_label)
+         VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
+        array(
+            (int) $p_step_id,
+            (int) $p_child_flow_id,
+            (int) $p_child_project_id,
+            $p_target_label,
+        )
+    );
+    return db_insert_id( $t_table );
+}
+
+/**
+ * Delete all subprocess targets for a step.
+ *
+ * @param int $p_step_id Step ID
+ */
+function flow_delete_subprocess_targets( $p_step_id ) {
+    $t_table = plugin_table( 'subprocess_target' );
+    db_param_push();
+    db_query(
+        "DELETE FROM $t_table WHERE step_id = " . db_param(),
+        array( (int) $p_step_id )
+    );
+}
+
+/**
+ * Delete all subprocess targets for a flow (used in flow_save_complete).
+ *
+ * @param int $p_flow_id Flow ID
+ */
+function flow_delete_subprocess_targets_by_flow( $p_flow_id ) {
+    $t_target_table = plugin_table( 'subprocess_target' );
+    $t_step_table = plugin_table( 'step' );
+    db_param_push();
+    db_query(
+        "DELETE FROM $t_target_table WHERE step_id IN (SELECT id FROM $t_step_table WHERE flow_id = " . db_param() . ")",
+        array( (int) $p_flow_id )
+    );
+}
+
+/**
+ * Get effective subprocess targets for a step.
+ * Falls back to step's child_flow_id/child_project_id if no targets defined.
+ *
+ * @param int $p_step_id Step ID
+ * @return array Array of target data (child_flow_id, child_project_id, target_label)
+ */
+function flow_get_effective_subprocess_targets( $p_step_id ) {
+    $t_targets = flow_get_subprocess_targets( $p_step_id );
+    if( !empty( $t_targets ) ) {
+        return $t_targets;
+    }
+
+    // Fallback: step tablosundaki eski tek hedef alanları
+    $t_step_table = plugin_table( 'step' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT child_flow_id, child_project_id FROM $t_step_table WHERE id = " . db_param(),
+        array( (int) $p_step_id )
+    );
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row !== false && (int) $t_row['child_flow_id'] > 0 ) {
+        return array( array(
+            'id' => 0,
+            'step_id' => $p_step_id,
+            'child_flow_id' => $t_row['child_flow_id'],
+            'child_project_id' => $t_row['child_project_id'],
+            'target_label' => '',
+        ) );
+    }
+
+    return array();
 }
