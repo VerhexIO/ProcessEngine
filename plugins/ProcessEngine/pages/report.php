@@ -230,13 +230,17 @@ layout_page_begin();
                     <div class="col-md-6">
                         <div class="pe-chart-box">
                             <h5><?php echo plugin_lang_get( 'report_chart_dept_performance' ); ?></h5>
-                            <canvas id="pe-chart-dept" height="250"></canvas>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-dept"></canvas>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="pe-chart-box">
                             <h5><?php echo plugin_lang_get( 'report_chart_sla_distribution' ); ?></h5>
-                            <canvas id="pe-chart-sla" height="250"></canvas>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-sla"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -244,13 +248,17 @@ layout_page_begin();
                     <div class="col-md-6">
                         <div class="pe-chart-box">
                             <h5><?php echo plugin_lang_get( 'report_chart_step_duration' ); ?></h5>
-                            <canvas id="pe-chart-steps" height="250"></canvas>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-steps"></canvas>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="pe-chart-box">
                             <h5><?php echo plugin_lang_get( 'report_chart_monthly_trend' ); ?></h5>
-                            <canvas id="pe-chart-trend" height="250"></canvas>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-trend"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>

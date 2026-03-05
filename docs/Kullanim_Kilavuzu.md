@@ -18,8 +18,10 @@
 8. [Eskalasyon Sistemi](#8-eskalasyon-sistemi)
 9. [Cron Görevi](#9-cron-görevi)
 10. [Yapılandırma](#10-yapılandırma)
-11. [Mimari ve Kısıtlamalar](#11-mimari-ve-kısıtlamalar)
-12. [Sorun Giderme](#12-sorun-giderme)
+11. [Hiyerarşik Süreç Yönetimi](#11-hiyerarşik-süreç-yönetimi)
+12. [Rapor Sayfası](#12-rapor-sayfası)
+13. [Mimari ve Kısıtlamalar](#13-mimari-ve-kısıtlamalar)
+14. [Sorun Giderme](#14-sorun-giderme)
 
 ---
 
@@ -32,18 +34,21 @@ ProcessEngine, MantisBT üzerinde çalışan bir **süreç motoru** eklentisidir
 | Özellik | Açıklama |
 |---------|----------|
 | **Görsel Akış Tasarımcısı** | Sürükle-bırak ile iş akışı tasarlama (SVG tabanlı) |
-| **SLA Takibi** | Her adım için saat bazında SLA süresi tanımlama ve izleme |
+| **SLA Takibi** | Her adım için dakika hassasiyetinde SLA süresi tanımlama ve izleme |
 | **Otomatik Eskalasyon** | SLA aşımında 4 seviyeli bildirim sistemi |
 | **Otomatik Sorumlu Atama** | Her adıma sorumlu kişi tanımlama, durum değiştiğinde otomatik atama |
-| **Süreç Paneli** | Canlı özet kartları ve filtrelenebilir talep tablosu |
-| **Görsel Adım Çubuğu** | Sorun detay sayfasında süreç ilerlemesini gösteren stepper |
-| **Zaman Çizelgesi** | Her talep için durum değişiklik geçmişi |
+| **Süreç Paneli** | Canlı özet kartları, filtrelenebilir talep tablosu (durum, departman, yıl/ay) |
+| **İlerleme Ağacı** | Sorun detay sayfasında dikey ağaç yapısıyla süreç ilerlemesi |
+| **Birleşik Zaman Çizelgesi** | Süreç logları ve MantisBT notları tek kronolojik görünümde |
+| **Rapor Sayfası** | Chart.js grafikleri ile departman performansı, SLA dağılımı, aylık trend |
+| **Hiyerarşik Alt Süreçler** | Yarı-manuel çocuk sorun oluşturma, çoklu hedef desteği |
+| **Koşullu Dallanma** | Alan eşittir / durum eşittir koşullarıyla otomatik yönlendirme |
 | **Darboğaz Analizi** | En çok SLA aşımı yaşanan adımların raporlanması |
 | **Dinamik Departman Yönetimi** | Yapılandırma sayfasından departman tanımlama |
 
 ### Çalışma Modeli
 
-Plugin **"Tek Sorun, Çoklu Adım"** modeli ile çalışır: Bir MantisBT sorunu, tanımlı akış adımları boyunca ilerler. Her durum değişikliği bir adım geçişi olarak loglanır ve SLA takibi başlatılır.
+Plugin **"Tek Sorun, Çoklu Adım"** modeli ile çalışır: Bir MantisBT sorunu, tanımlı akış adımları boyunca ilerler. Her durum değişikliği bir adım geçişi olarak loglanır ve SLA takibi başlatılır. Ek olarak **hiyerarşik alt süreç** desteği ile farklı projelerdeki sorunlar ebeveyn-çocuk ilişkisiyle bağlanabilir.
 
 ---
 
@@ -65,12 +70,14 @@ Plugin **"Tek Sorun, Çoklu Adım"** modeli ile çalışır: Bir MantisBT sorunu
 
 4. "Available Plugins" bölümünde **Process Engine 1.0.0** satırındaki **Install** butonuna tıklayın.
 
-5. Eklenti 5 veritabanı tablosu ve gerekli indeksleri oluşturur:
+5. Eklenti 7 veritabanı tablosu ve gerekli indeksleri oluşturur:
    - `mantis_plugin_ProcessEngine_flow_definition_table`
    - `mantis_plugin_ProcessEngine_step_table`
    - `mantis_plugin_ProcessEngine_transition_table`
    - `mantis_plugin_ProcessEngine_log_table`
    - `mantis_plugin_ProcessEngine_sla_tracking_table`
+   - `mantis_plugin_ProcessEngine_process_instance_table`
+   - `mantis_plugin_ProcessEngine_subprocess_target_table`
 
 6. Kurulum tamamlandığında üst menüde **"Süreç Paneli"** bağlantısı görünür.
 
@@ -107,15 +114,17 @@ Bu liste, akış tasarımcısında ve dashboard'daki departman filtresinde kulla
 |------|-----------|----------|
 | Yönetim Erişim Seviyesi | MANAGER | Akış tasarımı ve yapılandırma erişimi |
 | Görüntüleme Erişim Seviyesi | REPORTER | Süreç paneli ve zaman çizelgesi görüntüleme |
+| İşlem Yetki Seviyesi | DEVELOPER | Dashboard'dan adım ilerleme/geri alma |
 | SLA Uyarı Yüzdesi | %80 | Bu oran dolunca uyarı e-postası gönderilir |
-| İş Saati Başlangıç | 09:00 | SLA hesabı bu saatten başlar |
-| İş Saati Bitiş | 18:00 | SLA hesabı bu saatte durur |
+| İş Saati Başlangıç | 09:00 | SLA hesabı bu saatten başlar (HH:MM formatı) |
+| İş Saati Bitiş | 18:00 | SLA hesabı bu saatte durur (HH:MM formatı) |
 | Çalışma Günleri | 1,2,3,4,5 | Pazartesi-Cuma (1=Pzt, 7=Paz) |
 | Departmanlar | (boş) | Virgülle ayrılmış departman adları |
+| Otomatik Süreçler | Kapalı | Global oto kilit — açıksa otomatik tetikleyiciler çalışır |
 
 ### Örnek Veri Yükleme
 
-Yapılandırma sayfasının alt bölümündeki **"Örnek Veri Yükle"** butonuna tıklayarak 2 hazır akış şablonu yükleyebilirsiniz. Bu, eklentiyi hızlıca denemek için kullanışlıdır.
+Yapılandırma sayfasının alt bölümündeki **"Örnek Veri Yükle"** butonuna tıklayarak 4 hazır akış şablonu yükleyebilirsiniz (2 lineer + 1 hiyerarşik + 1 alt akış). Bu, eklentiyi hızlıca denemek için kullanışlıdır.
 
 ---
 
@@ -161,6 +170,10 @@ Her adım düğümüne çift tıklayarak düzenleyebilirsiniz:
 | **Rol** | Gerekli MantisBT rolü (reporter, developer, manager, vb.) |
 | **MantisBT Durumu** | Bu adıma karşılık gelen MantisBT issue durumu |
 | **Sorumlu Kişi** | Bu adıma atanacak kullanıcı (otomatik atama için) |
+| **Adım Tipi** | "Normal" veya "Alt Süreç" — alt süreç seçilirse hedef akış/proje tanımlanır |
+| **Adım Talimatları** | Kullanıcıya gösterilecek bilgi metni / yönerge (isteğe bağlı) |
+| **Başlatma Tetikleyicisi** | Otomatik veya Manuel adım başlatma |
+| **Tamamlama Kriteri** | Manuel, durum değişikliği veya çözülme ile tamamlama |
 
 #### Otomatik Sorumlu Atama
 
@@ -216,7 +229,7 @@ Sayfanın üst kısmında 6 özet kartı bulunur:
 
 ### Filtreler
 
-Talep tablosu iki tür filtre ile daraltılabilir:
+Talep tablosu dört tür filtre ile daraltılabilir:
 
 **Durum Filtreleri:**
 - **Tümü** — Tüm süreçli talepler
@@ -225,7 +238,10 @@ Talep tablosu iki tür filtre ile daraltılabilir:
 - **Tamamlanan** — Çözülmüş/kapatılmış talepler (status ≥ 80)
 
 **Departman Filtresi:**
-Dropdown menüden belirli bir departmanı seçerek o departmandaki talepleri filtreleyebilirsiniz. Departman listesi yapılandırmadan ve mevcut akış adımlarından otomatik olarak doldurulur.
+Dropdown menüden belirli bir departmanı seçerek o departmandaki talepleri filtreleyebilirsiniz.
+
+**Yıl/Ay Filtresi:**
+Sorunların oluşturulma tarihine göre yıl ve ay seçerek filtreleyebilirsiniz. Tüm filtreler birlikte çalışır — durum + departman + yıl + ay kombinasyonu uygulanabilir.
 
 ### Talep Tablosu
 
@@ -240,7 +256,9 @@ Her satırda şu bilgiler gösterilir:
 | İlerleme | Yüzde olarak ilerleme çubuğu |
 | Sorumlu | Talebe atanmış kişi |
 | SLA Durumu | NORMAL / WARNING / EXCEEDED |
+| Açılma Tarihi | Sorunun oluşturulma tarihi |
 | Güncelleme | Son durum değişikliği tarihi |
+| İşlemler | İlerlet / Geri Al butonları (yetki seviyesine göre) |
 
 ---
 
@@ -250,38 +268,46 @@ Her sorunun detay sayfasında (view.php) süreç bilgileri otomatik olarak 3 bö
 
 ### Süreç Bilgi Paneli
 
-Sorun bir aktif akışla eşleşiyorsa, şu bilgiler mavi bir bilgi kutusunda görüntülenir:
+Sorun bir aktif akışla eşleşiyorsa, şu bilgiler bilgi panelinde görüntülenir:
 
 | Alan | Açıklama |
 |------|----------|
 | **Mevcut Adım** | Sorunun bulunduğu akış adımı |
 | **Departman** | Mevcut adımın departmanı |
+| **Adım Durumu** | Başlangıç zamanı ve geçen süre |
 | **İlerleme** | "Adım X / Y" formatında ilerleme bilgisi |
-| **SLA Kalan** | Kalan SLA süresi (saat) veya "Süre aşıldı" |
+| **SLA Kalan** | Kalan SLA süresi veya "Süre aşıldı" |
 | **Sorumlu** | Mevcut adıma tanımlı sorumlu kişi |
+| **Adım Talimatları** | Tanımlıysa adım yönerge metni |
 
-### Görsel Adım Çubuğu (Stepper)
+### İlerleme ve Geri Alma
 
-Akışın tüm adımları yatay bir çubuk üzerinde numaralı daireler olarak gösterilir:
+- **İlerlet** butonu: Sorun sayfasından bir sonraki adıma ilerleme. Tıklandığında ilerleme modalı açılır — mevcut adım, sonraki adım bilgisi ve varsa adım talimatları gösterilir.
+- **Geri Al** butonu: Bir önceki adıma geri alma.
+- Her iki işlem de yetki seviyesine (action_threshold) tabidir.
+
+### Dikey İlerleme Ağacı
+
+Akışın tüm adımları dikey ağaç yapısında gösterilir. Subprocess adımları dallanarak alt süreç adımlarını da görüntüler:
 
 - **Yeşil daire + onay işareti**: Tamamlanan adımlar
 - **Mavi daire (vurgulu)**: Mevcut adım
 - **Gri daire**: Bekleyen adımlar
+- **Turuncu rozet**: Subprocess adımları (alt süreç dalları ile)
 
-Her adımın altında adım adı ve departman bilgisi yazılıdır.
+Her adımın yanında adım adı, departman ve varsa adım talimatları gösterilir. Subprocess adımında "Şimdi Aç" ve "Bağla" butonları da yer alır.
 
-### Süreç Zaman Çizelgesi
+### Birleşik Zaman Çizelgesi
 
-Tüm durum değişiklikleri kronolojik sırayla tablo halinde listelenir:
+Süreç logları ve MantisBT notları tek bir kronolojik zaman çizelgesinde görüntülenir:
 
-| Sütun | Açıklama |
-|-------|----------|
-| Tarih | Değişiklik tarihi ve saati |
-| Önceki Durum | Değişiklik öncesi MantisBT durumu |
-| Yeni Durum | Değişiklik sonrası MantisBT durumu |
-| Kullanıcı | İşlemi yapan kullanıcı |
-| Adım | Süreçte eşleşen adım adı |
-| Not | Varsa eklenen not (ör: "Akış dışı geçiş") |
+- **Süreç başlatma** (yeşil play ikonu): Süreç ilk başladığında
+- **Adım ilerleme** (mavi ok ikonu): Adım geçişleri, önceki/yeni durum bilgisi
+- **Geri alma** (turuncu geri al ikonu): Rollback işlemleri
+- **Kullanıcı notları** (yorum ikonu): MantisBT bugnote'ları
+- **Alt süreç olayları**: Çocuk sorun oluşturma ve tamamlanma
+
+Her satırda tarih, kullanıcı ve olay detayı gösterilir.
 
 ---
 
@@ -363,11 +389,13 @@ Her 15 dakikada bir SLA kontrolü:
 |------|-----|--------|----------|
 | **Yönetim Erişim Seviyesi** | Seçim | MantisBT erişim seviyeleri | Akış tasarımı ve yapılandırma için minimum yetki |
 | **Görüntüleme Erişim Seviyesi** | Seçim | MantisBT erişim seviyeleri | Süreç paneli ve zaman çizelgesini görme yetkisi |
+| **İşlem Yetki Seviyesi** | Seçim | MantisBT erişim seviyeleri | Dashboard'dan adım ilerleme/geri alma yetkisi |
 | **SLA Uyarı Yüzdesi** | Sayı | 50-99 | SLA uyarı e-postasının gönderildiği eşik değeri |
-| **İş Saati Başlangıç** | Sayı | 0-23 | SLA hesaplamasında günün başlangıç saati |
-| **İş Saati Bitiş** | Sayı | 0-23 | SLA hesaplamasında günün bitiş saati |
+| **İş Saati Başlangıç** | Metin | HH:MM | SLA hesaplamasında günün başlangıç saati (ör: 09:00) |
+| **İş Saati Bitiş** | Metin | HH:MM | SLA hesaplamasında günün bitiş saati (ör: 18:00) |
 | **Çalışma Günleri** | Metin | 1-7 arası | Virgülle ayrılmış gün numaraları (1=Pzt, 7=Paz) |
 | **Departmanlar** | Metin | Serbest | Virgülle ayrılmış departman adları |
+| **Otomatik Süreçler** | Açık/Kapalı | ON/OFF | Global oto kilit — kapalıyken otomatik tetikleyiciler engellenir |
 
 ### Hızlı Erişim Butonları
 
@@ -397,18 +425,21 @@ ProcessEngine artık **hiyerarşik süreç yönetimini** destekler. Bir ana sür
 
 ### Alt Süreç Oluşturma
 
-#### Otomatik Oluşturma (Akış Tasarımcısı ile)
+#### Akış Tasarımcısında Subprocess Adımı Tanımlama
 
 1. Akış tasarımcısında bir adım oluşturun
 2. Adım düzenleme penceresinde **Adım Tipi** = "Alt Süreç" seçin
-3. **Alt Süreç Akışı** dropdown'ından hedef akışı seçin
-4. **Hedef Proje** dropdown'ından çocuk talebin oluşturulacağı projeyi seçin
-5. **Bekleme Modu** seçin:
+3. **Çoklu Hedef** listesinden bir veya daha fazla hedef tanımlayın:
+   - Her hedef için: **Hedef Akış**, **Hedef Proje** ve **Etiket** belirtin
+4. **Bekleme Modu** seçin:
    - **Tümünü Bekle**: Tüm alt süreçler tamamlanınca ebeveyn ilerler
    - **Herhangi Birini Bekle**: İlk tamamlanan alt süreç sonrası ebeveyn ilerler
 
-Sorun bu adıma ulaştığında:
-- Hedef projede otomatik olarak yeni bir talep oluşturulur
+#### Yarı-Manuel Çocuk Sorun Oluşturma
+
+Sorun subprocess adımına ulaştığında:
+- Sorun detay sayfasında her hedef için **"Şimdi Aç"** butonu görünür
+- Kullanıcı butona tıklayarak çocuk sorun oluşturur (hedef projede)
 - Çocuk talep, seçilen alt süreç akışının başlangıç adımından başlar
 - Ebeveyn süreç **BEKLEMEDE** durumuna geçer
 - Çocuk tamamlandığında ebeveyn otomatik ilerler
@@ -416,8 +447,8 @@ Sorun bu adıma ulaştığında:
 #### Manuel Bağlama
 
 Mevcut bir talebi ebeveyn sürecin alt süreci olarak bağlayabilirsiniz:
-1. MantisBT'de normal "child-of" ilişkisi kurduğunuzda
-2. Plugin otomatik olarak bağlantıyı algılar
+1. Sorun detay sayfasındaki **"Bağla"** alanına mevcut sorun ID'sini girin
+2. **"Bağla"** butonuna tıklayın
 3. Ebeveyn subprocess adımında bekliyorsa, çocuk tamamlandığında ebeveyn ilerler
 
 ### Süreç Ağacı Görünümü
@@ -452,10 +483,12 @@ Hiyerarşik süreç bilgileri sorun detay sayfasında otomatik gösterilir:
 
 ### Süreç Paneli (Dashboard)
 
-Dashboard tablosuna yeni **"Alt Süreçler"** sütunu eklendi:
-- Alt süreçleri olan taleplerde "X/Y tamamlandı" formatında gösterilir
-- Ağaç ikonuna tıklayarak süreç ağacına gidilir
-- Yeni istatistik kartı: **"Bekleyen Alt Süreçler"** — subprocess adımında bekleyen ebeveyn sayısı
+Dashboard tablosunda alt süreç bilgileri de gösterilir:
+- **Açılma Tarihi** sütunu ile sorunun oluşturulma tarihi görüntülenir
+- Alt süreçleri olan taleplerde ağaç ikonu ile süreç ağacına gidilir
+- **Filtreler**: Durum (tümü/aktif/SLA aşımı/tamamlanan), departman, yıl ve ay filtreleri
+- **İşlem butonları**: İlerlet ve Geri Al (DEVELOPER+ yetkisi ile)
+- **Global SLA Kontrol** butonu (MANAGER+ yetkisi ile): Tüm aktif SLA'ları günceller
 
 ### Koşullu Geçişler (Dallanma)
 
@@ -478,7 +511,40 @@ Akış doğrulamasında subprocess zincirlerinde döngü kontrolü yapılır:
 
 ---
 
-## 12. Mimari ve Kısıtlamalar
+## 12. Rapor Sayfası
+
+**Erişim:** Süreç Paneli > **Rapor**
+**Gerekli Yetki:** Görüntüleme Erişim Seviyesi (varsayılan: REPORTER)
+
+### Filtreler
+
+Rapor sayfasında aşağıdaki filtreler kullanılabilir:
+- **Tarih Aralığı**: Başlangıç ve bitiş tarihi
+- **Proje**: Belirli bir proje seçimi
+- **Departman**: Departman bazlı filtreleme
+- **Akış**: Belirli bir akış tanımı
+- **Durum**: Aktif / Tamamlanan / Tümü
+
+### Özet Kartları
+
+Sayfanın üst kısmında 4 özet kartı bulunur: toplam süreç, aktif süreç, tamamlanan süreç, SLA aşımı sayısı.
+
+### Grafikler (Chart.js)
+
+| Grafik | Tip | Açıklama |
+|--------|-----|----------|
+| **Departman Performansı** | Bar | Departman bazında ortalama süreç süresi (saat) |
+| **SLA Dağılımı** | Pie | Normal / Uyarı / Aşım oranları |
+| **Adım Süre Dağılımı** | Yatay Bar | Her adımın ortalama süresi (saat) |
+| **Aylık Trend** | Line | Aylık süreç sayısı ve SLA aşım trendi |
+
+### Detay Tablosu
+
+Filtrelenmiş süreç kayıtlarının tablo görünümü: sorun ID, özet, akış, adım, departman, sorumlu, durum, süre, SLA durumu.
+
+---
+
+## 13. Mimari ve Kısıtlamalar
 
 ### Tek Sorun, Çoklu Adım Modeli
 
@@ -493,10 +559,10 @@ ProcessEngine, **"Tek Sorun, Çoklu Adım"** modeli ile çalışır:
 Aşağıdaki senaryolar **hiyerarşik süreç modeli** ile desteklenmektedir:
 
 - **Sorun Zinciri (Subprocess):** A talebi → B talebi → C talebi şeklinde farklı sorunları ebeveyn-çocuk ilişkisiyle bağlama. Detaylar için bkz. [Bölüm 11: Hiyerarşik Süreç Yönetimi](#11-hiyerarşik-süreç-yönetimi).
-- **Otomatik Alt Talep:** Subprocess tipindeki adımlarda hedef projede otomatik çocuk sorun oluşturulur.
+- **Yarı-Manuel Alt Talep:** Subprocess tipindeki adımlarda kullanıcı "Şimdi Aç" butonuyla hedef projede çocuk sorun oluşturur. Çoklu hedef tanımlıysa her hedef için ayrı buton gösterilir.
 - **Koşullu Dallanma:** Bir adımdan birden fazla geçiş tanımlanabilir, koşullar (field_equals, status_is) ile otomatik dallanma sağlanır.
 
-Ebeveyn-çocuk ilişkileri `process_instance` tablosu üzerinden takip edilir. MantisBT'nin native `bug_relationship_table` tablosu süreç bağlamında kullanılmamaktadır.
+Ebeveyn-çocuk ilişkileri `process_instance` tablosu üzerinden takip edilir. Subprocess oluştururken MantisBT native `bug_relationship_table` tablosuna `BUG_REL_PARENT_OF` kaydı da eklenir (mevcut kayıtlar değiştirilmez).
 
 ### Departman Yönetimi
 
@@ -506,7 +572,7 @@ Departmanlar artık yapılandırma sayfasından dinamik olarak yönetilir. Eski 
 
 ---
 
-## 12. Sorun Giderme
+## 14. Sorun Giderme
 
 ### Sık Karşılaşılan Hatalar
 

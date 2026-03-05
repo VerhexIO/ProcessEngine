@@ -46,8 +46,13 @@
     font-weight: 600;
     color: #555;
 }
-.pe-chart-box canvas {
+.pe-chart-wrapper {
+    position: relative;
+    height: 250px;
+}
+.pe-chart-wrapper canvas {
     width: 100% !important;
+    height: 100% !important;
 }
 
 /* Filtre alanı */

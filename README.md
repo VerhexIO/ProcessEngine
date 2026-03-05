@@ -6,12 +6,16 @@ MantisBT 2.24+ üzerinde çalışan departmanlar arası iş akışı yönetim mo
 
 - **Görsel Akış Tasarımcısı**: Sürükle-bırak SVG editörü ile akış tanımlama
 - **Koşullu Dallanma**: Alan eşittir, durum eşittir koşullarıyla otomatik yönlendirme
-- **Hiyerarşik Alt Süreçler**: Adımları alt akışlara bağlama, otomatik çocuk sorun oluşturma
-- **SLA Takibi**: İş saatlerine göre deadline hesaplama, uyarı ve eskalasyon
+- **Hiyerarşik Alt Süreçler**: Adımları alt akışlara bağlama, yarı-manuel çocuk sorun oluşturma
+- **Çoklu Subprocess Hedef**: Tek subprocess adımından birden fazla alt akış/proje hedefi tanımlama
+- **Topolojik Sıralama**: Kahn algoritması ile otomatik adım sıralaması
+- **SLA Takibi**: İş saatlerine göre dakika hassasiyetinde deadline hesaplama, uyarı ve eskalasyon
 - **E-posta Bildirimleri**: SLA uyarı, aşım ve eskalasyon e-postaları
-- **Süreç Paneli (Dashboard)**: Filtre, ilerleme çubuğu, adım ilerleme, SLA güncelleme
-- **Süreç Ağacı**: Ebeveyn-çocuk ilişkisini görselleştirme
-- **Yapılandırılabilir**: İş saatleri, çalışma günleri, departmanlar, yetki seviyeleri
+- **Süreç Paneli (Dashboard)**: Filtre (durum, departman, yıl/ay), ilerleme çubuğu, adım ilerleme modalı
+- **Rapor Sayfası**: Chart.js grafikleri (departman performansı, SLA dağılımı, adım süresi, aylık trend)
+- **Süreç Ağacı**: Ebeveyn-çocuk ilişkisini dikey ağaç yapısında görselleştirme
+- **Adım Talimatları**: Her adıma bilgi metni/yönerge tanımlama
+- **Yapılandırılabilir**: İş saatleri, çalışma günleri, departmanlar, yetki seviyeleri, global oto kilit
 
 ## Gereksinimler
 
@@ -19,14 +23,14 @@ MantisBT 2.24+ üzerinde çalışan departmanlar arası iş akışı yönetim mo
 |---------|-------|
 | MantisBT | 2.24.0+ |
 | PHP | 7.x+ |
-| Veritabanı | MySQL 5.7+ / MariaDB 10.2+ |
+| Veritabanı | MySQL 8.0 |
 
 ## Kurulum
 
 1. `plugins/ProcessEngine/` klasörünü MantisBT kurulumunuzun `plugins/` dizinine kopyalayın
 2. MantisBT yönetim paneline giriş yapın: **Yönet → Eklentileri Yönet**
 3. "Süreç Motoru" eklentisini bulun ve **Kur** butonuna tıklayın
-4. Gerekli veritabanı tabloları otomatik oluşturulur (6 tablo + indeksler)
+4. Gerekli veritabanı tabloları otomatik oluşturulur (7 tablo + indeksler)
 
 ## Yapılandırma
 
@@ -38,9 +42,10 @@ MantisBT 2.24+ üzerinde çalışan departmanlar arası iş akışı yönetim mo
 | Görüntüleme Erişim Seviyesi | REPORTER | Süreç bilgilerini görme |
 | İşlem Yetki Seviyesi | DEVELOPER | Dashboard'dan adım ilerleme |
 | SLA Uyarı Yüzdesi | %80 | SLA uyarı tetikleme eşiği |
-| İş Saatleri | 09:00 - 18:00 | SLA hesaplaması için |
+| İş Saatleri | 09:00 - 18:00 | SLA hesaplaması için (HH:MM formatı) |
 | Çalışma Günleri | Pzt-Cum | SLA hesaplaması için |
 | Departmanlar | (boş) | Virgülle ayrılmış liste |
+| Otomatik Süreçler | Kapalı | Global oto kilit (açıksa auto tetikleyiciler çalışır) |
 
 ## Kullanım
 
@@ -54,13 +59,22 @@ MantisBT 2.24+ üzerinde çalışan departmanlar arası iş akışı yönetim mo
 - Sorun oluşturulduğunda aktif akış otomatik başlar
 - Durum değişiklikleri süreç loguna kaydedilir
 - SLA takibi otomatik başlar/biter
+- Sorun detay sayfasında dikey ilerleme ağacı ve birleşik zaman çizelgesi görüntülenir
 
-### 3. Alt Süreçler
+### 3. Alt Süreçler (Yarı-Manuel)
 - Adım tipini "Alt Süreç" olarak ayarlayın
-- Hedef akış ve proje seçin
+- Hedef akış ve proje seçin (çoklu hedef desteklenir)
+- Sorun subprocess adımına geldiğinde kullanıcı "Şimdi Aç" butonuyla çocuk sorunu oluşturur
+- Mevcut sorunlar "Bağla" butonuyla da bağlanabilir
 - Ebeveyn bekleme modu: "Tümünü Bekle" veya "Herhangi Birini Bekle"
 
-### 4. SLA Cron
+### 4. Rapor Sayfası
+- **Süreç Paneli → Rapor** menüsünden erişilir
+- Filtreler: tarih aralığı, proje, departman, akış, durum
+- 4 grafik: departman performansı, SLA dağılımı, adım süresi, aylık trend
+- Detay tablosu ve özet kartlar
+
+### 5. SLA Cron
 Otomatik SLA kontrolü için cron görevi ekleyin:
 ```bash
 */5 * * * * php /path/to/mantisbt/scripts/sla_cron.php
@@ -70,19 +84,21 @@ Otomatik SLA kontrolü için cron görevi ekleyin:
 
 | Tablo | Açıklama |
 |-------|----------|
-| `mantis_plugin_ProcessEngine_flow_definition` | Akış tanımları |
-| `mantis_plugin_ProcessEngine_step` | Akış adımları |
-| `mantis_plugin_ProcessEngine_transition` | Adımlar arası geçişler |
-| `mantis_plugin_ProcessEngine_log` | Süreç logları |
-| `mantis_plugin_ProcessEngine_sla_tracking` | SLA takip kayıtları |
-| `mantis_plugin_ProcessEngine_process_instance` | Süreç örnekleri |
+| `flow_definition_table` | Akış tanımları |
+| `step_table` | Akış adımları |
+| `transition_table` | Adımlar arası geçişler |
+| `log_table` | Süreç logları |
+| `sla_tracking_table` | SLA takip kayıtları |
+| `process_instance_table` | Süreç örnekleri (ebeveyn-çocuk ilişkileri) |
+| `subprocess_target_table` | Çoklu subprocess hedefleri |
 
 ## Bilinen Kısıtlamalar
 
 - Proje başına yalnızca bir aktif akış desteklenir
 - Alt süreç derinliği en fazla 10 seviye
-- MantisBT native ilişki tablosu (`bug_relationship_table`) süreç bağlamında kullanılmaz
 - Aktif (yayınlanmış) akışlar doğrudan düzenlenemez — önce taslak durumuna alınmalıdır
+- Aktif süreçlere bağlı akışlar silinemez
+- MantisBT native `bug_relationship_table` tablosuna subprocess oluştururken `BUG_REL_PARENT_OF` kaydı eklenir (mevcut kayıtlar değiştirilmez)
 
 ## Lisans
 

@@ -14,10 +14,11 @@
    ```
 
 **Beklenen Sonuç:**
-- 6 tablo oluşturulmuş olmalı: `flow_definition_table`, `step_table`, `transition_table`, `log_table`, `sla_tracking_table`, `process_instance_table`
-- `step_table`'da `step_type`, `child_flow_id`, `child_project_id`, `wait_mode` sütunları mevcut
+- 7 tablo oluşturulmuş olmalı: `flow_definition_table`, `step_table`, `transition_table`, `log_table`, `sla_tracking_table`, `process_instance_table`, `subprocess_target_table`
+- `step_table`'da `step_type`, `child_flow_id`, `child_project_id`, `wait_mode`, `step_instructions` sütunları mevcut
 - `transition_table`'da `condition_type`, `label` sütunları mevcut
 - `process_instance_table`'da gerekli indeksler mevcut
+- `subprocess_target_table`'da `step_id`, `child_flow_id`, `child_project_id`, `target_label` sütunları mevcut
 
 **Otomatik Test:**
 ```bash
@@ -56,16 +57,18 @@ docker exec mantisbt php /var/www/html/scripts/test_technical.php
 
 **Adımlar:**
 1. Ebeveyn akışa sahip projede sorun oluştur
-2. Sorunun durumunu subprocess adımına karşılık gelen MantisBT durumuna değiştir
-3. Çocuk sorunun hedef projede otomatik oluşturulduğunu doğrula
+2. Sorunun durumunu subprocess adımına kadar ilerlet (dashboard veya bug view'dan)
+3. Subprocess adımında "Şimdi Aç" butonuna tıklayarak çocuk sorun oluştur (yarı-manuel)
 4. Ebeveyn sürecin WAITING durumuna geçtiğini kontrol et
-5. Çocuk sorunu tamamla (resolved/closed durumuna getir)
+5. Çocuk sorunu tamamla (tüm adımları ilerlet)
 6. Ebeveynin otomatik ilerlediğini doğrula
 
 **Beklenen Sonuç:**
-- Subprocess adımına gelindiğinde çocuk sorun otomatik oluşturulur
+- Subprocess adımına gelindiğinde "Şimdi Aç" butonu görünür (yarı-manuel oluşturma)
+- Çoklu hedef tanımlıysa her hedef için ayrı "Şimdi Aç" butonu gösterilir
+- Kullanıcı butona tıklayınca çocuk sorun hedef projede oluşturulur
+- Mevcut sorunlar "Bağla" butonuyla da bağlanabilir
 - Ebeveyn instance durumu ACTIVE → WAITING olur
-- Çocuk sorun `[Alt Süreç]` öneki ile oluşturulur
 - Çocuk tamamlandığında ebeveyn otomatik bir sonraki adıma ilerler
 - Süreç ağacında ebeveyn-çocuk ilişkisi görüntülenir
 - `wait_mode='all'` ise tüm çocuklar tamamlanmalı
