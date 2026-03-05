@@ -6,10 +6,31 @@
 (function() {
     'use strict';
 
-    var data = window.PE_REPORT_DATA;
-    if (!data) return;
+    var data = null;
+
+    function loadData() {
+        var el = document.getElementById('pe-report-data');
+        if (!el) return false;
+
+        data = {
+            deptPerf: JSON.parse(el.getAttribute('data-dept-perf') || '[]'),
+            stepStats: JSON.parse(el.getAttribute('data-step-stats') || '[]'),
+            monthly: JSON.parse(el.getAttribute('data-monthly') || '[]'),
+            slaDistribution: JSON.parse(el.getAttribute('data-sla-distribution') || '{}'),
+            labels: {
+                normal: el.getAttribute('data-label-normal') || '',
+                warning: el.getAttribute('data-label-warning') || '',
+                exceeded: el.getAttribute('data-label-exceeded') || '',
+                avgDuration: el.getAttribute('data-label-avg-duration') || '',
+                processCount: el.getAttribute('data-label-process-count') || '',
+                slaExceeded: el.getAttribute('data-label-sla-exceeded') || ''
+            }
+        };
+        return true;
+    }
 
     function initCharts() {
+        if (!loadData()) return;
         renderDeptPerformance();
         renderSlaDistribution();
         renderStepDuration();

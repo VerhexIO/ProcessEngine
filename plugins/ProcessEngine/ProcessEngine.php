@@ -609,9 +609,10 @@ class ProcessEnginePlugin extends MantisPlugin {
         // Rapor sayfasında Chart.js + report CSS/JS yükle
         $t_current_page = isset( $_GET['page'] ) ? $_GET['page'] : '';
         if( strpos( $t_current_page, 'ProcessEngine/report' ) !== false ) {
-            $t_css .= '<link rel="stylesheet" href="' . plugin_file( 'report.css' ) . '" />' . "\n";
-            $t_js .= '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>' . "\n";
-            $t_js .= '<script src="' . plugin_file( 'report.js' ) . '"></script>' . "\n";
+            $t_v = '&v=' . $this->version;
+            $t_css .= '<link rel="stylesheet" href="' . plugin_file( 'report.css' ) . $t_v . '" />' . "\n";
+            $t_js .= '<script src="' . plugin_file( 'chart.min.js' ) . $t_v . '"></script>' . "\n";
+            $t_js .= '<script src="' . plugin_file( 'report.js' ) . $t_v . '"></script>' . "\n";
         }
 
         return $t_css . $t_js;

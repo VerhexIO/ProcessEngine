@@ -347,27 +347,24 @@ layout_page_begin();
     </div>
 </div>
 
-<!-- Chart.js data -->
-<script>
-window.PE_REPORT_DATA = {
-    deptPerf: <?php echo json_encode( $t_dept_perf ); ?>,
-    stepStats: <?php echo json_encode( $t_step_stats ); ?>,
-    monthly: <?php echo json_encode( $t_monthly ); ?>,
-    slaDistribution: <?php echo json_encode( array(
-        'normal'   => max( 0, $t_report['summary']['sla_compliance'] ),
-        'warning'  => 0,
-        'exceeded' => max( 0, 100 - $t_report['summary']['sla_compliance'] ),
-    ) ); ?>,
-    labels: {
-        normal: '<?php echo plugin_lang_get( 'sla_normal' ); ?>',
-        warning: '<?php echo plugin_lang_get( 'sla_warning' ); ?>',
-        exceeded: '<?php echo plugin_lang_get( 'sla_exceeded' ); ?>',
-        avgDuration: '<?php echo plugin_lang_get( 'report_summary_avg_duration' ); ?>',
-        processCount: '<?php echo plugin_lang_get( 'report_summary_total' ); ?>',
-        slaExceeded: '<?php echo plugin_lang_get( 'sla_exceeded' ); ?>',
-    }
-};
-</script>
+<!-- Chart.js data (CSP uyumlu: inline script yok, data-* attribute ile aktarım) -->
+<div id="pe-report-data"
+     style="display:none;"
+     data-dept-perf="<?php echo string_attribute( json_encode( $t_dept_perf ) ); ?>"
+     data-step-stats="<?php echo string_attribute( json_encode( $t_step_stats ) ); ?>"
+     data-monthly="<?php echo string_attribute( json_encode( $t_monthly ) ); ?>"
+     data-sla-distribution="<?php echo string_attribute( json_encode( array(
+         'normal'   => max( 0, $t_report['summary']['sla_compliance'] ),
+         'warning'  => 0,
+         'exceeded' => max( 0, 100 - $t_report['summary']['sla_compliance'] ),
+     ) ) ); ?>"
+     data-label-normal="<?php echo string_attribute( plugin_lang_get( 'sla_normal' ) ); ?>"
+     data-label-warning="<?php echo string_attribute( plugin_lang_get( 'sla_warning' ) ); ?>"
+     data-label-exceeded="<?php echo string_attribute( plugin_lang_get( 'sla_exceeded' ) ); ?>"
+     data-label-avg-duration="<?php echo string_attribute( plugin_lang_get( 'report_summary_avg_duration' ) ); ?>"
+     data-label-process-count="<?php echo string_attribute( plugin_lang_get( 'report_summary_total' ) ); ?>"
+     data-label-sla-exceeded="<?php echo string_attribute( plugin_lang_get( 'sla_exceeded' ) ); ?>"
+></div>
 
 <?php
 layout_page_end();
