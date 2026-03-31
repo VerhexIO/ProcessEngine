@@ -21,6 +21,7 @@ $t_business_hours_end        = plugin_config_get( 'business_hours_end' );
 $t_working_days              = plugin_config_get( 'working_days' );
 $t_departments               = plugin_config_get( 'departments', '' );
 $t_allow_automatic_processes = plugin_config_get( 'allow_automatic_processes' );
+$t_enable_kpi_tracking       = plugin_config_get( 'enable_kpi_tracking' );
 
 // Access levels for dropdown
 $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access_levels_enum_string' ) );
@@ -187,6 +188,20 @@ $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access
                                     <input type="checkbox" name="allow_automatic_processes" value="1"
                                            <?php echo ( $t_allow_automatic_processes ? 'checked' : '' ); ?> />
                                     <?php echo plugin_lang_get( 'config_allow_automatic_label' ); ?>
+                                </label>
+                            </td>
+                        </tr>
+
+                        <!-- KPI Tracking -->
+                        <tr>
+                            <td class="category">
+                                <?php echo plugin_lang_get( 'enable_kpi_tracking' ); ?>
+                            </td>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_kpi_tracking" value="1"
+                                           <?php echo ( $t_enable_kpi_tracking ? 'checked' : '' ); ?> />
+                                    <?php echo plugin_lang_get( 'kpi_tracking_label' ); ?>
                                 </label>
                             </td>
                         </tr>

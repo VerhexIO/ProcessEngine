@@ -386,6 +386,82 @@ function sla_aggregate_tree_node( $p_node, &$p_summary ) {
 }
 
 /**
+ * Calculate business minutes between two timestamps.
+ * Inverse of sla_calculate_deadline() - counts only working hours.
+ *
+ * @param int $p_start_time Start unix timestamp
+ * @param int $p_end_time End unix timestamp
+ * @return int Business minutes between the two timestamps
+ */
+function sla_calculate_business_minutes( $p_start_time, $p_end_time ) {
+    if( $p_end_time <= $p_start_time ) {
+        return 0;
+    }
+
+    $t_bh_start_min = sla_parse_time_to_minutes( plugin_config_get( 'business_hours_start' ) );
+    $t_bh_end_min = sla_parse_time_to_minutes( plugin_config_get( 'business_hours_end' ) );
+    $t_working_days_str = plugin_config_get( 'working_days' );
+    $t_working_days = array_map( 'intval', explode( ',', $t_working_days_str ) );
+
+    $t_minutes_per_day = $t_bh_end_min - $t_bh_start_min;
+    if( $t_minutes_per_day <= 0 ) {
+        $t_minutes_per_day = 480;
+    }
+
+    $t_total_bm = 0;
+    $t_current = $p_start_time;
+
+    // Güvenlik: max 365 gün iterasyon
+    $t_max_iterations = 365;
+    $t_iter = 0;
+
+    while( $t_current < $p_end_time && $t_iter < $t_max_iterations ) {
+        $t_iter++;
+        $t_dow = (int) date( 'N', $t_current ); // 1=Mon, 7=Sun
+
+        if( !in_array( $t_dow, $t_working_days ) ) {
+            // Çalışma günü değil — ertesi güne atla
+            $t_current = mktime( 0, 0, 0, date( 'n', $t_current ), date( 'j', $t_current ) + 1, date( 'Y', $t_current ) );
+            continue;
+        }
+
+        $t_current_min = (int) date( 'G', $t_current ) * 60 + (int) date( 'i', $t_current );
+
+        // İş saatinden önce ise iş saati başlangıcına atla
+        if( $t_current_min < $t_bh_start_min ) {
+            $t_current_min = $t_bh_start_min;
+            $t_start_h = intdiv( $t_bh_start_min, 60 );
+            $t_start_m = $t_bh_start_min % 60;
+            $t_current = mktime( $t_start_h, $t_start_m, 0, date( 'n', $t_current ), date( 'j', $t_current ), date( 'Y', $t_current ) );
+        }
+
+        // İş saatinden sonra ise ertesi güne atla
+        if( $t_current_min >= $t_bh_end_min ) {
+            $t_current = mktime( 0, 0, 0, date( 'n', $t_current ), date( 'j', $t_current ) + 1, date( 'Y', $t_current ) );
+            continue;
+        }
+
+        // Bu gün bitiş saatinin timestamp'i
+        $t_day_end_h = intdiv( $t_bh_end_min, 60 );
+        $t_day_end_m = $t_bh_end_min % 60;
+        $t_day_end_ts = mktime( $t_day_end_h, $t_day_end_m, 0, date( 'n', $t_current ), date( 'j', $t_current ), date( 'Y', $t_current ) );
+
+        // Bu günde sayılabilecek bitiş noktası
+        $t_effective_end = min( $p_end_time, $t_day_end_ts );
+
+        if( $t_effective_end > $t_current ) {
+            $t_diff_seconds = $t_effective_end - $t_current;
+            $t_total_bm += (int) round( $t_diff_seconds / 60 );
+        }
+
+        // Ertesi güne geç
+        $t_current = mktime( 0, 0, 0, date( 'n', $t_current ), date( 'j', $t_current ) + 1, date( 'Y', $t_current ) );
+    }
+
+    return $t_total_bm;
+}
+
+/**
  * Get bottleneck steps (steps with most SLA exceeded).
  *
  * @return array Array of step data with exceeded counts

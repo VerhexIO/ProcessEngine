@@ -52,6 +52,7 @@ $t_business_hours_end        = gpc_get_string( 'business_hours_end', '18:00' );
 $t_working_days              = gpc_get_string( 'working_days', '1,2,3,4,5' );
 $t_departments               = gpc_get_string( 'departments', '' );
 $t_allow_automatic_processes = gpc_get_int( 'allow_automatic_processes', 0 );
+$t_enable_kpi_tracking       = gpc_get_int( 'enable_kpi_tracking', 0 );
 
 // Validate working days format
 $t_working_days = preg_replace( '/[^0-9,]/', '', $t_working_days );
@@ -87,6 +88,7 @@ plugin_config_set( 'business_hours_end',        $t_business_hours_end );
 plugin_config_set( 'working_days',              $t_working_days );
 plugin_config_set( 'departments',               $t_departments );
 plugin_config_set( 'allow_automatic_processes', $t_allow_automatic_processes );
+plugin_config_set( 'enable_kpi_tracking',       $t_enable_kpi_tracking );
 
 form_security_purge( 'ProcessEngine_config_update' );
 print_header_redirect( plugin_page( 'config_page', true ) );

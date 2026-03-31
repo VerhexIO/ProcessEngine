@@ -680,6 +680,199 @@ try {
 }
 
 // ============================================================
+echo PHP_EOL . "=== 26. FAZ 14: FLOW_DEFINITION SUBPROJECT_ID SUTUNU ===" . PHP_EOL;
+$r = db_query("SHOW COLUMNS FROM mantis_plugin_ProcessEngine_flow_definition_table LIKE 'subproject_id'");
+$row = db_fetch_array($r);
+if($row !== false) {
+    test_ok("flow_definition.subproject_id sutunu mevcut", $row["type"]);
+} else {
+    test_fail("flow_definition.subproject_id sutunu bulunamadi");
+}
+
+// ============================================================
+echo PHP_EOL . "=== 27. FAZ 14: STEP_KPI TABLO KONTROLU ===" . PHP_EOL;
+$t_kpi_table = "mantis_plugin_ProcessEngine_step_kpi_table";
+try {
+    $r = db_query("SELECT COUNT(*) AS cnt FROM " . $t_kpi_table);
+    $row = db_fetch_array($r);
+    test_ok("step_kpi_table mevcut", $row["cnt"] . " kayit");
+
+    // Sutun kontrolu
+    $required_kpi_cols = array("id", "instance_id", "bug_id", "step_id", "flow_id",
+        "department", "handler_id", "entered_at", "exited_at",
+        "elapsed_minutes", "business_minutes", "is_rollback", "exit_type");
+    $r = db_query("SHOW COLUMNS FROM " . $t_kpi_table);
+    $existing_kpi = array();
+    while($row = db_fetch_array($r)) {
+        $existing_kpi[] = $row["field"];
+    }
+    foreach($required_kpi_cols as $col) {
+        if(in_array($col, $existing_kpi)) {
+            test_ok("step_kpi." . $col);
+        } else {
+            test_fail("step_kpi." . $col, "sutun bulunamadi");
+        }
+    }
+} catch(Exception $e) {
+    test_fail("step_kpi_table", $e->getMessage());
+}
+
+// ============================================================
+echo PHP_EOL . "=== 28. FAZ 14: STEP_KPI INDEX KONTROLU ===" . PHP_EOL;
+try {
+    $r = db_query("SHOW INDEX FROM " . $t_kpi_table);
+    $kpi_indexes = array();
+    while($row = db_fetch_array($r)) {
+        $kpi_indexes[$row["key_name"]][] = $row["column_name"];
+    }
+    $expected_kpi_idx = array("instance_id", "bug_id", "step_id", "department");
+    foreach($expected_kpi_idx as $col) {
+        $found = false;
+        foreach($kpi_indexes as $name => $cols) {
+            if(in_array($col, $cols)) { $found = true; break; }
+        }
+        if($found) {
+            test_ok("step_kpi index: " . $col);
+        } else {
+            test_warn("step_kpi index eksik: " . $col);
+        }
+    }
+} catch(Exception $e) {
+    test_warn("step_kpi index kontrol", $e->getMessage());
+}
+
+// ============================================================
+echo PHP_EOL . "=== 29. FAZ 14: KPI_API FONKSIYON TESTI ===" . PHP_EOL;
+require_once($t_plugin_dir . '/core/kpi_api.php');
+$kpi_funcs = array(
+    "kpi_on_step_enter",
+    "kpi_on_step_exit",
+    "kpi_on_rollback",
+    "kpi_get_step_stats",
+    "kpi_get_flow_stats",
+    "kpi_get_department_stats",
+    "kpi_get_handler_stats",
+    "kpi_get_instance_timeline",
+    "kpi_get_current_step_time"
+);
+foreach($kpi_funcs as $f) {
+    if(function_exists($f)) {
+        test_ok($f . "()");
+    } else {
+        test_fail($f . "()", "fonksiyon tanimli degil");
+    }
+}
+
+// ============================================================
+echo PHP_EOL . "=== 30. FAZ 14: SLA_CALCULATE_BUSINESS_MINUTES FONKSIYONU ===" . PHP_EOL;
+if(function_exists("sla_calculate_business_minutes")) {
+    test_ok("sla_calculate_business_minutes()");
+    // Basit fonksiyonel test: ayni zaman = 0 dakika
+    try {
+        plugin_push_current('ProcessEngine');
+        $t_now = time();
+        $t_bm = sla_calculate_business_minutes($t_now, $t_now);
+        if($t_bm === 0) {
+            test_ok("sla_calculate_business_minutes(now, now) = 0", "dogru");
+        } else {
+            test_warn("sla_calculate_business_minutes(now, now)", "beklenen=0, alinan=" . $t_bm);
+        }
+        plugin_pop_current();
+    } catch(Exception $e) {
+        test_warn("sla_calculate_business_minutes fonksiyonel test", $e->getMessage());
+        try { plugin_pop_current(); } catch(Exception $ex) {}
+    }
+} else {
+    test_fail("sla_calculate_business_minutes()", "fonksiyon tanimli degil");
+}
+
+// ============================================================
+echo PHP_EOL . "=== 31. FAZ 14: FLOW_API YENI FONKSIYONLAR ===" . PHP_EOL;
+$faz14_flow_funcs = array(
+    "flow_set_passive",
+    "flow_validate_project_rules"
+);
+foreach($faz14_flow_funcs as $f) {
+    if(function_exists($f)) {
+        test_ok($f . "()");
+    } else {
+        test_fail($f . "()", "fonksiyon tanimli degil");
+    }
+}
+
+// ============================================================
+echo PHP_EOL . "=== 32. FAZ 14: ENABLE_KPI_TRACKING CONFIG ===" . PHP_EOL;
+try {
+    plugin_push_current('ProcessEngine');
+    $t_kpi_cfg = plugin_config_get('enable_kpi_tracking');
+    test_ok("enable_kpi_tracking config", "deger=" . $t_kpi_cfg);
+    plugin_pop_current();
+} catch(Exception $e) {
+    test_warn("enable_kpi_tracking config", $e->getMessage());
+    try { plugin_pop_current(); } catch(Exception $ex) {}
+}
+
+// ============================================================
+echo PHP_EOL . "=== 33. FAZ 14: DIL DIZGISI FAZ 14 KONTROLU ===" . PHP_EOL;
+$faz14_strings = array(
+    "all_subprojects", "select_subproject", "subproject",
+    "flow_status_passive", "flow_set_passive",
+    "cannot_passive_open_issues",
+    "rule_conflict_all_subprojects", "rule_conflict_specific_subproject",
+    "kpi_step_duration", "kpi_business_minutes", "kpi_elapsed_minutes",
+    "kpi_avg_duration", "kpi_department_stats", "kpi_handler_stats",
+    "kpi_rollback_indicator", "kpi_flow_total_duration",
+    "kpi_step_entered", "kpi_step_exited",
+    "enable_kpi_tracking", "kpi_tracking_label",
+    "step_time_in_step", "passive_flow_no_new_issues",
+    "col_subproject", "flow_publish_failed",
+    "kpi_avg_completion_time", "col_step_time"
+);
+$t_tr14 = file_get_contents($t_plugin_dir . '/lang/strings_turkish.txt');
+$t_en14 = file_get_contents($t_plugin_dir . '/lang/strings_english.txt');
+$t_f14_ok = 0;
+$t_f14_miss = 0;
+foreach($faz14_strings as $s) {
+    $key = 'plugin_ProcessEngine_' . $s;
+    $tr_found = strpos($t_tr14, $key) !== false;
+    $en_found = strpos($t_en14, $key) !== false;
+    if($tr_found && $en_found) {
+        $t_f14_ok++;
+    } elseif($tr_found) {
+        test_warn("Faz 14 dil: " . $s, "sadece TR");
+    } elseif($en_found) {
+        test_warn("Faz 14 dil: " . $s, "sadece EN");
+    } else {
+        test_fail("Faz 14 dil: " . $s, "dil stringi bulunamadi");
+        $t_f14_miss++;
+    }
+}
+test_ok("Faz 14 dil dizgileri", $t_f14_ok . "/" . count($faz14_strings) . " tanimli" . ($t_f14_miss > 0 ? ", " . $t_f14_miss . " eksik" : ""));
+
+// ============================================================
+echo PHP_EOL . "=== 34. FAZ 14: FLOW_DEFINITION PROJE+ALTPROJE INDEX ===" . PHP_EOL;
+try {
+    $r = db_query("SHOW INDEX FROM mantis_plugin_ProcessEngine_flow_definition_table");
+    $fd_indexes = array();
+    while($row = db_fetch_array($r)) {
+        $fd_indexes[$row["key_name"]][] = $row["column_name"];
+    }
+    $found_subproject_idx = false;
+    foreach($fd_indexes as $name => $cols) {
+        if(in_array("subproject_id", $cols) && in_array("project_id", $cols)) {
+            $found_subproject_idx = true;
+            test_ok("flow_definition project+subproject index", $name . " (" . implode(", ", $cols) . ")");
+            break;
+        }
+    }
+    if(!$found_subproject_idx) {
+        test_warn("flow_definition project+subproject+status index bulunamadi");
+    }
+} catch(Exception $e) {
+    test_warn("flow_definition index kontrol", $e->getMessage());
+}
+
+// ============================================================
 echo PHP_EOL . "========================================" . PHP_EOL;
 echo "SONUC: " . $pass . " basarili, " . $fail . " hata, " . $warn . " uyari" . PHP_EOL;
 echo "========================================" . PHP_EOL;

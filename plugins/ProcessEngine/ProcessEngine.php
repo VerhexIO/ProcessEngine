@@ -18,7 +18,7 @@ class ProcessEnginePlugin extends MantisPlugin {
         $this->description = plugin_lang_get( 'plugin_description' );
         $this->page        = 'config_page';
 
-        $this->version     = '1.0.1';
+        $this->version     = '1.1.0';
         $this->requires    = array(
             'MantisCore' => '2.24.0',
         );
@@ -42,6 +42,7 @@ class ProcessEnginePlugin extends MantisPlugin {
             'working_days'              => '1,2,3,4,5',
             'departments'               => '',
             'allow_automatic_processes' => OFF,
+            'enable_kpi_tracking'       => ON,
         );
     }
 
@@ -321,6 +322,50 @@ class ProcessEnginePlugin extends MantisPlugin {
             " )
         );
 
+        // 29: Add subproject_id to flow_definition (Faz 14)
+        $t_schema[] = array(
+            'AddColumnSQL',
+            array( plugin_table( 'flow_definition' ), "subproject_id I UNSIGNED DEFAULT '0'" )
+        );
+
+        // 30: step_kpi table — adım bazlı süre takibi (Faz 14)
+        $t_schema[] = array(
+            'CreateTableSQL',
+            array( plugin_table( 'step_kpi' ), "
+                id               I       NOTNULL UNSIGNED AUTOINCREMENT PRIMARY,
+                instance_id      I       NOTNULL UNSIGNED DEFAULT '0',
+                bug_id           I       NOTNULL UNSIGNED DEFAULT '0',
+                step_id          I       NOTNULL UNSIGNED DEFAULT '0',
+                flow_id          I       NOTNULL UNSIGNED DEFAULT '0',
+                department       C(128)  DEFAULT '',
+                handler_id       I       UNSIGNED DEFAULT '0',
+                entered_at       I       NOTNULL UNSIGNED DEFAULT '0',
+                exited_at        I       UNSIGNED DEFAULT '0',
+                elapsed_minutes  I       UNSIGNED DEFAULT '0',
+                business_minutes I       UNSIGNED DEFAULT '0',
+                is_rollback      I2      DEFAULT '0',
+                exit_type        C(16)   DEFAULT ''
+            " )
+        );
+
+        // 31: step_kpi indexes (Faz 14)
+        $t_schema[] = array(
+            'CreateIndexSQL',
+            array( 'idx_kpi_instance', plugin_table( 'step_kpi' ), 'instance_id' )
+        );
+
+        // 32: step_kpi bug index (Faz 14)
+        $t_schema[] = array(
+            'CreateIndexSQL',
+            array( 'idx_kpi_bug', plugin_table( 'step_kpi' ), 'bug_id' )
+        );
+
+        // 33: flow_definition project+subproject index (Faz 14)
+        $t_schema[] = array(
+            'CreateIndexSQL',
+            array( 'idx_flow_project_subproject', plugin_table( 'flow_definition' ), 'project_id, subproject_id, status' )
+        );
+
         return $t_schema;
     }
 
@@ -347,6 +392,11 @@ class ProcessEnginePlugin extends MantisPlugin {
             return $p_bug_data;
         }
 
+        // PASİF akış yeni talep alamaz
+        if( (int) $t_flow['status'] !== 2 ) {
+            return $p_bug_data;
+        }
+
         // İlk adımı bul (gelen geçişi olmayan adım)
         $t_step = process_find_start_step( $t_flow['id'] );
         if( $t_step === null ) {
@@ -362,6 +412,12 @@ class ProcessEnginePlugin extends MantisPlugin {
         // SLA takibini başlat
         if( (int) $t_step['sla_hours'] > 0 ) {
             sla_start_tracking( $p_bug_id, (int) $t_step['id'], (int) $t_flow['id'], (int) $t_step['sla_hours'] );
+        }
+
+        // KPI: İlk adım girişi
+        if( plugin_config_get( 'enable_kpi_tracking' ) == ON ) {
+            require_once( __DIR__ . '/core/kpi_api.php' );
+            kpi_on_step_enter( $t_inst_id, $p_bug_id, (int) $t_step['id'], (int) $t_flow['id'] );
         }
 
         // Başlangıç adımının handler_id'si varsa otomatik ata
@@ -418,12 +474,13 @@ class ProcessEnginePlugin extends MantisPlugin {
                     sla_start_tracking( $t_bug_id, (int) $t_step['id'], (int) $t_flow['id'], (int) $t_step['sla_hours'] );
                 }
 
-                // Process instance güncelleme + subprocess mantığı (ertelenmiş)
+                // Process instance güncelleme + subprocess mantığı + KPI (ertelenmiş)
                 if( $t_step !== null ) {
                     $t_step_id = (int) $t_step['id'];
                     $t_flow_id = (int) $t_flow['id'];
                     $t_step_data = $t_step; // Closure için kopyala
-                    register_shutdown_function( function() use ( $t_bug_id, $t_step_id, $t_flow_id, $t_step_data ) {
+                    $t_kpi_enabled = ( plugin_config_get( 'enable_kpi_tracking' ) == ON );
+                    register_shutdown_function( function() use ( $t_bug_id, $t_step_id, $t_flow_id, $t_step_data, $t_kpi_enabled ) {
                         require_once( __DIR__ . '/core/subprocess_api.php' );
                         $t_inst = subprocess_get_instance( $t_bug_id );
                         if( $t_inst === null ) {
@@ -431,7 +488,15 @@ class ProcessEnginePlugin extends MantisPlugin {
                         }
 
                         $t_inst_id = (int) $t_inst['id'];
+                        $t_old_step_id = (int) $t_inst['current_step_id'];
                         subprocess_update_current_step( $t_inst_id, $t_step_id );
+
+                        // KPI: Eski adımdan çıkış + yeni adıma giriş
+                        if( $t_kpi_enabled && $t_old_step_id !== $t_step_id ) {
+                            require_once( __DIR__ . '/core/kpi_api.php' );
+                            kpi_on_step_exit( $t_inst_id, $t_old_step_id, 'advance' );
+                            kpi_on_step_enter( $t_inst_id, $t_bug_id, $t_step_id, $t_flow_id );
+                        }
 
                         // Faz 11: Subprocess adımına gelindiğinde otomatik çocuk oluşturma YAPILMAZ.
                         // Kullanıcı manuel olarak "Şimdi Aç" butonuyla oluşturacak.
@@ -628,6 +693,7 @@ class ProcessEnginePlugin extends MantisPlugin {
 
         require_once( __DIR__ . '/core/process_api.php' );
         require_once( __DIR__ . '/core/subprocess_api.php' );
+        require_once( __DIR__ . '/core/kpi_api.php' );
 
         $t_logs = process_get_logs_for_bug( $p_bug_id );
         if( empty( $t_logs ) ) {
@@ -825,6 +891,20 @@ class ProcessEnginePlugin extends MantisPlugin {
                         <div class="pe-info-label"><?php echo plugin_lang_get( 'process_start_time' ); ?></div>
                         <div class="pe-info-value"><?php echo $t_start_time_str; ?></div>
                     </div>
+                    <?php if( plugin_config_get( 'enable_kpi_tracking' ) ) {
+                        $t_kpi_current = kpi_get_current_step_time( $p_bug_id );
+                        if( $t_kpi_current !== null ) {
+                            $t_kpi_bm = (int) $t_kpi_current['business_minutes'];
+                            $t_kpi_display = ( $t_kpi_bm >= 60 ) ? round( $t_kpi_bm / 60, 1 ) . 'h' : $t_kpi_bm . 'm';
+                        } else {
+                            $t_kpi_display = '-';
+                        }
+                    ?>
+                    <div class="pe-info-item">
+                        <div class="pe-info-label"><?php echo plugin_lang_get( 'step_time_in_step' ); ?></div>
+                        <div class="pe-info-value"><?php echo $t_kpi_display; ?></div>
+                    </div>
+                    <?php } ?>
                 </div>
                 <?php if( $t_step_instructions !== '' ) { ?>
                 <div class="pe-instructions-box">

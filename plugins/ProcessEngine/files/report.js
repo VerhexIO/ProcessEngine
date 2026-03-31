@@ -17,6 +17,8 @@
             stepStats: JSON.parse(el.getAttribute('data-step-stats') || '[]'),
             monthly: JSON.parse(el.getAttribute('data-monthly') || '[]'),
             slaDistribution: JSON.parse(el.getAttribute('data-sla-distribution') || '{}'),
+            kpiDept: JSON.parse(el.getAttribute('data-kpi-dept') || '[]'),
+            kpiSteps: JSON.parse(el.getAttribute('data-kpi-steps') || '[]'),
             labels: {
                 normal: el.getAttribute('data-label-normal') || '',
                 warning: el.getAttribute('data-label-warning') || '',
@@ -35,6 +37,8 @@
         renderSlaDistribution();
         renderStepDuration();
         renderMonthlyTrend();
+        renderKpiDeptAvg();
+        renderKpiStepDist();
     }
 
     /**
@@ -205,6 +209,106 @@
                 maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    /**
+     * KPI: Departman Bazlı Ort. İş Dakikası — Bar chart
+     */
+    function renderKpiDeptAvg() {
+        var canvas = document.getElementById('pe-chart-kpi-dept');
+        if (!canvas || !data.kpiDept || data.kpiDept.length === 0) return;
+
+        var labels = [];
+        var avgData = [];
+        var colors = [];
+        var palette = ['#2196f3', '#e91e63', '#ffc107', '#009688', '#673ab7', '#ff5722'];
+
+        for (var i = 0; i < data.kpiDept.length; i++) {
+            labels.push(data.kpiDept[i].department);
+            avgData.push(data.kpiDept[i].avg_minutes);
+            colors.push(palette[i % palette.length]);
+        }
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Business Minutes',
+                    data: avgData,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    /**
+     * KPI: Adım Bazlı Süre Dağılımı — Horizontal bar chart
+     */
+    function renderKpiStepDist() {
+        var canvas = document.getElementById('pe-chart-kpi-steps');
+        if (!canvas || !data.kpiSteps || data.kpiSteps.length === 0) return;
+
+        var labels = [];
+        var avgData = [];
+        var minData = [];
+        var maxData = [];
+
+        for (var i = 0; i < data.kpiSteps.length; i++) {
+            labels.push(data.kpiSteps[i].step_name);
+            avgData.push(data.kpiSteps[i].avg_minutes);
+            minData.push(data.kpiSteps[i].min_minutes);
+            maxData.push(data.kpiSteps[i].max_minutes);
+        }
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Min',
+                        data: minData,
+                        backgroundColor: 'rgba(76,175,80,0.5)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Avg',
+                        data: avgData,
+                        backgroundColor: 'rgba(33,150,243,0.7)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Max',
+                        data: maxData,
+                        backgroundColor: 'rgba(244,67,54,0.5)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true }
                 },
                 plugins: {
                     legend: { position: 'bottom' }

@@ -11,6 +11,9 @@ access_ensure_global_level( plugin_config_get( 'view_threshold' ) );
 
 require_once( dirname( __DIR__ ) . '/core/process_api.php' );
 require_once( dirname( __DIR__ ) . '/core/flow_api.php' );
+require_once( dirname( __DIR__ ) . '/core/kpi_api.php' );
+
+$t_kpi_enabled = (bool) plugin_config_get( 'enable_kpi_tracking' );
 
 // Filtreleri oku
 $t_date_from_str = gpc_get_string( 'date_from', '' );
@@ -263,6 +266,57 @@ layout_page_begin();
                     </div>
                 </div>
 
+                <?php if( $t_kpi_enabled ) {
+                    // KPI grafikler için veri hazırla
+                    $t_kpi_dept_data = array();
+                    $t_kpi_step_data = array();
+
+                    // Departman bazlı ortalama iş saati süresi
+                    $t_dept_list_kpi = process_get_departments();
+                    foreach( $t_dept_list_kpi as $t_kd ) {
+                        $t_ds = kpi_get_department_stats( $t_kd, $t_date_from, $t_date_to );
+                        if( $t_ds['total_records'] > 0 ) {
+                            $t_kpi_dept_data[] = array(
+                                'department' => $t_kd,
+                                'avg_minutes' => round( $t_ds['avg_business_minutes'], 1 ),
+                                'count' => $t_ds['total_records'],
+                            );
+                        }
+                    }
+
+                    // Adım bazlı süre dağılımı (seçili akışa göre)
+                    if( $t_flow_id > 0 ) {
+                        $t_kpi_step_raw = kpi_get_step_stats( $t_flow_id );
+                        foreach( $t_kpi_step_raw as $t_ks ) {
+                            $t_kpi_step_data[] = array(
+                                'step_name' => $t_ks['step_name'],
+                                'avg_minutes' => round( $t_ks['avg_business_minutes'], 1 ),
+                                'min_minutes' => (int) $t_ks['min_business_minutes'],
+                                'max_minutes' => (int) $t_ks['max_business_minutes'],
+                            );
+                        }
+                    }
+                ?>
+                <div class="row" style="margin-bottom:15px;">
+                    <div class="col-md-6">
+                        <div class="pe-chart-box">
+                            <h5><?php echo plugin_lang_get( 'kpi_chart_dept_avg' ); ?></h5>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-kpi-dept"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="pe-chart-box">
+                            <h5><?php echo plugin_lang_get( 'kpi_chart_step_dist' ); ?></h5>
+                            <div class="pe-chart-wrapper">
+                                <canvas id="pe-chart-kpi-steps"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php } ?>
+
                 <!-- Detay Tablosu -->
                 <div class="table-responsive">
                     <table class="table table-bordered table-condensed table-hover table-striped">
@@ -372,6 +426,10 @@ layout_page_begin();
      data-label-avg-duration="<?php echo string_attribute( plugin_lang_get( 'report_summary_avg_duration' ) ); ?>"
      data-label-process-count="<?php echo string_attribute( plugin_lang_get( 'report_summary_total' ) ); ?>"
      data-label-sla-exceeded="<?php echo string_attribute( plugin_lang_get( 'sla_exceeded' ) ); ?>"
+     <?php if( $t_kpi_enabled ) { ?>
+     data-kpi-dept="<?php echo string_attribute( json_encode( isset( $t_kpi_dept_data ) ? $t_kpi_dept_data : array() ) ); ?>"
+     data-kpi-steps="<?php echo string_attribute( json_encode( isset( $t_kpi_step_data ) ? $t_kpi_step_data : array() ) ); ?>"
+     <?php } ?>
 ></div>
 
 <?php

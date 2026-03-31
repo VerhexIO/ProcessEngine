@@ -10,6 +10,10 @@ access_ensure_global_level( plugin_config_get( 'view_threshold' ) );
 
 require_once( dirname( __DIR__ ) . '/core/process_api.php' );
 require_once( dirname( __DIR__ ) . '/core/subprocess_api.php' );
+require_once( dirname( __DIR__ ) . '/core/kpi_api.php' );
+require_once( dirname( __DIR__ ) . '/core/flow_api.php' );
+
+$t_kpi_enabled = (bool) plugin_config_get( 'enable_kpi_tracking' );
 
 $t_dept_list = process_get_departments();
 
@@ -122,6 +126,35 @@ $t_base_url = plugin_page( 'dashboard' );
                 </div>
             </div>
         </div>
+        <?php if( $t_kpi_enabled ) { ?>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="widget-box">
+                <div class="widget-body">
+                    <div class="widget-main pe-card pe-card-green">
+                        <?php
+                        $t_kpi_avg = '-';
+                        // Tüm akışlardan ortalama tamamlanma süresi (iş saati)
+                        $t_all_flows = flow_get_all();
+                        $t_total_bm = 0;
+                        $t_total_cnt = 0;
+                        foreach( $t_all_flows as $t_af ) {
+                            $t_fs = kpi_get_flow_stats( (int) $t_af['id'] );
+                            if( $t_fs['completed_count'] > 0 ) {
+                                $t_total_bm += $t_fs['avg_business_minutes'] * $t_fs['completed_count'];
+                                $t_total_cnt += $t_fs['completed_count'];
+                            }
+                        }
+                        if( $t_total_cnt > 0 ) {
+                            $t_kpi_avg = round( $t_total_bm / $t_total_cnt / 60, 1 ) . 'h';
+                        }
+                        ?>
+                        <div class="pe-card-value"><?php echo $t_kpi_avg; ?></div>
+                        <div class="pe-card-label"><?php echo plugin_lang_get( 'kpi_avg_completion_time' ); ?></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php } ?>
     </div>
 
     <div class="space-10"></div>
@@ -203,6 +236,9 @@ $t_base_url = plugin_page( 'dashboard' );
                                 <th><?php echo plugin_lang_get( 'col_progress' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_handler' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_sla_status' ); ?></th>
+                                <?php if( $t_kpi_enabled ) { ?>
+                                <th><?php echo plugin_lang_get( 'col_step_time' ); ?></th>
+                                <?php } ?>
                                 <th><?php echo plugin_lang_get( 'col_subprocess' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_updated' ); ?></th>
                                 <?php if( access_has_global_level( plugin_config_get( 'action_threshold' ) ) ) { ?>
@@ -214,6 +250,7 @@ $t_base_url = plugin_page( 'dashboard' );
                             <?php
                             $t_can_action = access_has_global_level( plugin_config_get( 'action_threshold' ) );
                             $t_colspan = $t_can_action ? 11 : 10;
+                            if( $t_kpi_enabled ) { $t_colspan++; }
                             ?>
                             <?php if( empty( $t_bugs ) ) { ?>
                             <tr>
@@ -276,6 +313,23 @@ $t_base_url = plugin_page( 'dashboard' );
                                         <?php echo string_display_line( $t_bug_row['sla_status'] ); ?>
                                     </span>
                                 </td>
+                                <?php if( $t_kpi_enabled ) { ?>
+                                <td>
+                                    <?php
+                                    $t_kpi_time = kpi_get_current_step_time( $t_bug_row['bug_id'] );
+                                    if( $t_kpi_time !== null && $t_kpi_time['business_minutes'] > 0 ) {
+                                        $t_bm = (int) $t_kpi_time['business_minutes'];
+                                        if( $t_bm >= 60 ) {
+                                            echo round( $t_bm / 60, 1 ) . 'h';
+                                        } else {
+                                            echo $t_bm . 'm';
+                                        }
+                                    } else {
+                                        echo '-';
+                                    }
+                                    ?>
+                                </td>
+                                <?php } ?>
                                 <td class="pe-subprocess-col">
                                     <?php
                                     $t_sub_info = isset( $t_bug_row['subprocess_info'] ) ? $t_bug_row['subprocess_info'] : null;

@@ -38,6 +38,23 @@ if( $t_action === 'unpublish' && $t_flow_id > 0 ) {
     print_header_redirect( plugin_page( 'flow_designer', true ) . '&flow_id=' . $t_flow_id );
 }
 
+// Handle set_passive
+if( $t_action === 'set_passive' && $t_flow_id > 0 ) {
+    form_security_validate( 'ProcessEngine_flow_set_passive' );
+    $t_result = flow_set_passive( $t_flow_id );
+    form_security_purge( 'ProcessEngine_flow_set_passive' );
+    if( $t_result === 'has_instances' ) {
+        layout_page_header( plugin_lang_get( 'flow_designer_title' ) );
+        layout_page_begin();
+        echo '<div class="alert alert-danger" style="margin: 20px;">'
+            . plugin_lang_get( 'cannot_passive_open_issues' )
+            . '</div>';
+        layout_page_end();
+        exit;
+    }
+    print_header_redirect( plugin_page( 'flow_designer', true ) );
+}
+
 // Handle delete
 if( $t_action === 'delete' && $t_flow_id > 0 ) {
     form_security_validate( 'ProcessEngine_flow_delete' );
@@ -94,6 +111,7 @@ if( $t_flow_id === 0 ) {
                                 <th>ID</th>
                                 <th><?php echo plugin_lang_get( 'col_flow_name' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'flow_project' ); ?></th>
+                                <th><?php echo plugin_lang_get( 'col_subproject' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_status' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_updated' ); ?></th>
                                 <th><?php echo plugin_lang_get( 'col_actions' ); ?></th>
@@ -101,19 +119,21 @@ if( $t_flow_id === 0 ) {
                         </thead>
                         <tbody>
                             <?php if( empty( $t_flows ) ) { ?>
-                            <tr><td colspan="6" class="center"><?php echo plugin_lang_get( 'no_data' ); ?></td></tr>
+                            <tr><td colspan="7" class="center"><?php echo plugin_lang_get( 'no_data' ); ?></td></tr>
                             <?php } else {
                                 foreach( $t_flows as $t_flow ) {
                                     $t_status_labels = array(
                                         0 => plugin_lang_get( 'flow_status_draft' ),
                                         1 => plugin_lang_get( 'flow_status_pending' ),
                                         2 => plugin_lang_get( 'flow_status_active' ),
+                                        3 => plugin_lang_get( 'flow_status_passive' ),
                                     );
                                     $t_status_label = isset( $t_status_labels[(int)$t_flow['status']] )
                                         ? $t_status_labels[(int)$t_flow['status']]
                                         : $t_flow['status'];
                                     $t_status_class = '';
                                     if( (int)$t_flow['status'] === 2 ) $t_status_class = 'label-success';
+                                    elseif( (int)$t_flow['status'] === 3 ) $t_status_class = 'label-info';
                                     elseif( (int)$t_flow['status'] === 1 ) $t_status_class = 'label-warning';
                                     else $t_status_class = 'label-default';
                             ?>
@@ -129,7 +149,21 @@ if( $t_flow_id === 0 ) {
                                     if( $t_proj_id > 0 && project_exists( $t_proj_id ) ) {
                                         echo string_display_line( project_get_name( $t_proj_id ) );
                                     } else {
-                                        echo plugin_lang_get( 'all_projects' );
+                                        echo '-';
+                                    }
+                                ?></td>
+                                <td><?php
+                                    $t_subproj_id = isset( $t_flow['subproject_id'] ) ? (int) $t_flow['subproject_id'] : 0;
+                                    if( $t_subproj_id > 0 && project_exists( $t_subproj_id ) ) {
+                                        // Alt proje adını göster + ana proje bağlamı
+                                        $t_sp_parents = process_get_all_parent_project_ids( $t_subproj_id );
+                                        if( !empty( $t_sp_parents ) ) {
+                                            $t_top_parent_name = project_get_name( $t_sp_parents[ count( $t_sp_parents ) - 1 ] );
+                                            echo '<small class="text-muted">' . string_display_line( $t_top_parent_name ) . ' &raquo;</small> ';
+                                        }
+                                        echo string_display_line( project_get_name( $t_subproj_id ) );
+                                    } else {
+                                        echo '<span class="text-muted">' . plugin_lang_get( 'all_subprojects' ) . '</span>';
                                     }
                                 ?></td>
                                 <td><span class="label <?php echo $t_status_class; ?>"><?php echo $t_status_label; ?></span></td>
@@ -139,12 +173,22 @@ if( $t_flow_id === 0 ) {
                                     <a href="<?php echo plugin_page( 'flow_designer' ) . '&flow_id=' . (int)$t_flow['id']; ?>" class="btn btn-xs btn-info">
                                         <i class="fa fa-eye"></i> <?php echo plugin_lang_get( 'btn_view' ); ?>
                                     </a>
+                                    <form method="post" action="<?php echo plugin_page( 'flow_designer' ) . '&action=set_passive&flow_id=' . (int)$t_flow['id']; ?>" style="display:inline;">
+                                        <?php echo form_security_field( 'ProcessEngine_flow_set_passive' ); ?>
+                                        <button type="submit" class="btn btn-xs btn-warning" onclick="return confirm('<?php echo plugin_lang_get( 'flow_set_passive_confirm' ); ?>');">
+                                            <i class="fa fa-ban"></i> <?php echo plugin_lang_get( 'flow_set_passive' ); ?>
+                                        </button>
+                                    </form>
                                     <form method="post" action="<?php echo plugin_page( 'flow_designer' ) . '&action=unpublish&flow_id=' . (int)$t_flow['id']; ?>" style="display:inline;">
                                         <?php echo form_security_field( 'ProcessEngine_flow_unpublish' ); ?>
-                                        <button type="submit" class="btn btn-xs btn-warning" onclick="return confirm('<?php echo plugin_lang_get( 'flow_unpublish_confirm' ); ?>');">
+                                        <button type="submit" class="btn btn-xs btn-default" onclick="return confirm('<?php echo plugin_lang_get( 'flow_unpublish_confirm' ); ?>');">
                                             <i class="fa fa-pause"></i> <?php echo plugin_lang_get( 'btn_unpublish' ); ?>
                                         </button>
                                     </form>
+                                    <?php } elseif( (int) $t_flow['status'] === 3 ) { ?>
+                                    <a href="<?php echo plugin_page( 'flow_designer' ) . '&flow_id=' . (int)$t_flow['id']; ?>" class="btn btn-xs btn-info">
+                                        <i class="fa fa-eye"></i> <?php echo plugin_lang_get( 'btn_view' ); ?>
+                                    </a>
                                     <?php } else { ?>
                                     <a href="<?php echo plugin_page( 'flow_designer' ) . '&flow_id=' . (int)$t_flow['id']; ?>" class="btn btn-xs btn-primary">
                                         <i class="fa fa-pencil"></i> <?php echo plugin_lang_get( 'btn_edit' ); ?>
@@ -214,23 +258,87 @@ if( $t_flow_id === 0 ) {
                         <label><?php echo plugin_lang_get( 'flow_name' ); ?></label>
                         <input type="text" id="pe-flow-name" class="form-control input-sm" value="<?php echo string_attribute( $t_flow['name'] ); ?>" <?php echo $t_is_active ? 'readonly' : ''; ?> />
                     </div>
-                    <div class="col-md-1">
+                    <div class="col-md-2">
                         <label><?php echo plugin_lang_get( 'flow_project' ); ?></label>
                         <select id="pe-flow-project" class="form-control input-sm" <?php echo $t_is_active ? 'disabled' : ''; ?>>
-                            <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
+                            <option value="">-- <?php echo plugin_lang_get( 'flow_project' ); ?> --</option>
                             <?php
-                            $t_projects = project_get_all_rows();
-                            foreach( $t_projects as $t_proj ) { ?>
-                            <option value="<?php echo (int) $t_proj['id']; ?>"
-                                <?php echo ( (int) $t_flow['project_id'] === (int) $t_proj['id'] ) ? 'selected' : ''; ?>>
-                                <?php echo string_display_line( $t_proj['name'] ); ?>
-                            </option>
-                            <?php } ?>
+                            // Proje-alt proje haritası oluştur
+                            $t_all_projects = project_get_all_rows();
+                            $t_project_subproject_map = array(); // pid => [ {id, name}, ... ]
+
+                            foreach( $t_all_projects as $t_proj ) {
+                                $t_pid = (int) $t_proj['id'];
+                                $t_subs = project_hierarchy_get_subprojects( $t_pid );
+                                $t_sub_list = array();
+                                foreach( $t_subs as $t_sp_id ) {
+                                    if( project_exists( $t_sp_id ) ) {
+                                        $t_sub_list[] = array( 'id' => (int) $t_sp_id, 'name' => project_get_name( $t_sp_id ) );
+                                    }
+                                }
+                                $t_project_subproject_map[$t_pid] = $t_sub_list;
+                            }
+
+                            // Projeleri hiyerarşik ağaç olarak render et (recursive)
+                            if( !function_exists( 'pe_render_project_options' ) ) {
+                            function pe_render_project_options( $p_projects, $p_map, $p_selected_id, $p_depth = 0 ) {
+                                foreach( $p_projects as $t_proj ) {
+                                    $t_pid = (int) $t_proj['id'];
+                                    $t_indent = str_repeat( '&nbsp;&nbsp;', $p_depth );
+                                    $t_prefix = $p_depth > 0 ? '&raquo; ' : '';
+                                    $t_sel = ( $p_selected_id === $t_pid ) ? 'selected' : '';
+                                    echo '<option value="' . $t_pid . '" ' . $t_sel . '>';
+                                    echo $t_indent . $t_prefix . string_display_line( $t_proj['name'] );
+                                    echo '</option>' . PHP_EOL;
+
+                                    // Alt projelerini render et
+                                    if( isset( $p_map[$t_pid] ) && !empty( $p_map[$t_pid] ) ) {
+                                        $t_child_rows = array();
+                                        foreach( $p_map[$t_pid] as $t_sp ) {
+                                            $t_child_rows[] = array( 'id' => $t_sp['id'], 'name' => $t_sp['name'] );
+                                        }
+                                        pe_render_project_options( $t_child_rows, $p_map, $p_selected_id, $p_depth + 1 );
+                                    }
+                                }
+                            }
+                            }
+
+                            // Üst seviye projeleri bul
+                            $t_top_level = array();
+                            foreach( $t_all_projects as $t_proj ) {
+                                $t_pid = (int) $t_proj['id'];
+                                $t_parent = (int) project_hierarchy_get_parent( $t_pid );
+                                if( $t_parent <= 0 ) {
+                                    $t_top_level[] = $t_proj;
+                                }
+                            }
+
+                            pe_render_project_options( $t_top_level, $t_project_subproject_map, (int) $t_flow['project_id'] );
+                            ?>
                         </select>
                     </div>
-                    <div class="col-md-2" style="padding-top: 22px;">
+                    <div class="col-md-2">
+                        <label><?php echo plugin_lang_get( 'subproject' ); ?></label>
+                        <select id="pe-flow-subproject" class="form-control input-sm" <?php echo $t_is_active ? 'disabled' : ''; ?>
+                                data-all-label="<?php echo string_attribute( plugin_lang_get( 'all_subprojects' ) ); ?>">
+                            <option value="0"><?php echo plugin_lang_get( 'all_subprojects' ); ?></option>
+                            <?php
+                            $t_flow_proj_id = (int) $t_flow['project_id'];
+                            $t_flow_subproj_id = isset( $t_flow['subproject_id'] ) ? (int) $t_flow['subproject_id'] : 0;
+                            if( $t_flow_proj_id > 0 && isset( $t_project_subproject_map[$t_flow_proj_id] ) ) {
+                                foreach( $t_project_subproject_map[$t_flow_proj_id] as $t_sp ) { ?>
+                            <option value="<?php echo (int) $t_sp['id']; ?>"
+                                <?php echo ( $t_flow_subproj_id === (int) $t_sp['id'] ) ? 'selected' : ''; ?>>
+                                <?php echo string_display_line( $t_sp['name'] ); ?>
+                            </option>
+                            <?php   }
+                            } ?>
+                        </select>
+                    </div>
+                    <div class="col-md-1" style="padding-top: 22px;">
                         <span class="label <?php
                             if((int)$t_flow['status'] === 2) echo 'label-success';
+                            elseif((int)$t_flow['status'] === 3) echo 'label-info';
                             elseif((int)$t_flow['status'] === 1) echo 'label-warning';
                             else echo 'label-default';
                         ?>"><?php
@@ -238,6 +346,7 @@ if( $t_flow_id === 0 ) {
                                 0 => plugin_lang_get( 'flow_status_draft' ),
                                 1 => plugin_lang_get( 'flow_status_pending' ),
                                 2 => plugin_lang_get( 'flow_status_active' ),
+                                3 => plugin_lang_get( 'flow_status_passive' ),
                             );
                             echo isset($t_sl[(int)$t_flow['status']]) ? $t_sl[(int)$t_flow['status']] : $t_flow['status'];
                         ?></span>
@@ -530,6 +639,8 @@ if( $t_flow_id === 0 ) {
      data-validate-url="<?php echo string_attribute( plugin_page( 'flow_validate' ) ); ?>"
      data-publish-url="<?php echo string_attribute( plugin_page( 'flow_publish' ) ); ?>"
      data-project-id="<?php echo (int) $t_flow['project_id']; ?>"
+     data-subproject-id="<?php echo isset( $t_flow['subproject_id'] ) ? (int) $t_flow['subproject_id'] : 0; ?>"
+     data-project-subprojects="<?php echo string_attribute( json_encode( $t_project_subproject_map ) ); ?>"
      data-steps="<?php echo string_attribute( json_encode( $t_steps ) ); ?>"
      data-transitions="<?php echo string_attribute( json_encode( $t_transitions ) ); ?>"
      style="display:none;"></div>

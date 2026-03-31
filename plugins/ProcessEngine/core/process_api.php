@@ -67,23 +67,93 @@ function process_log_status_change( $p_bug_id, $p_old_status, $p_new_status, $p_
 }
 
 /**
- * Get the active flow for a project.
- * Falls back to flows with project_id = 0 (global).
+ * Get all parent project IDs for a given project (walking up the hierarchy).
+ * Returns array of parent IDs from immediate parent to root.
+ * Uses project_hierarchy_get_parent() which is available in MantisBT 2.x.
  *
  * @param int $p_project_id Project ID
+ * @return array Parent project IDs (immediate parent first)
+ */
+if( !function_exists( 'process_get_all_parent_project_ids' ) ) {
+function process_get_all_parent_project_ids( $p_project_id ) {
+    $t_parents = array();
+    $t_current = (int) $p_project_id;
+    $t_max_depth = 10; // güvenlik limiti
+    $t_depth = 0;
+
+    while( $t_depth < $t_max_depth ) {
+        $t_parent = (int) project_hierarchy_get_parent( $t_current );
+        if( $t_parent <= 0 || $t_parent === $t_current ) {
+            break;
+        }
+        $t_parents[] = $t_parent;
+        $t_current = $t_parent;
+        $t_depth++;
+    }
+
+    return $t_parents;
+}
+}
+
+/**
+ * Get the active flow for a project, with subproject hierarchy support.
+ *
+ * Resolution order:
+ * 1. Bug's project is a subproject? Check parent for specific subproject flow
+ * 2. Check for "All Subprojects" (subproject_id=0) flow on parent
+ * 3. Check for direct project match (project_id = bug's project)
+ * 4. Return null if no match
+ *
+ * @param int $p_project_id Project ID (bug's project_id)
  * @return array|null Flow row or null
  */
 function process_get_active_flow_for_project( $p_project_id ) {
     $t_table = plugin_table( 'flow_definition' );
+    $t_pid = (int) $p_project_id;
+
+    // 1. Bu proje için doğrudan aktif akış (belirli alt proje veya tüm alt projeler)
     db_param_push();
-    $t_query = "SELECT * FROM $t_table
-        WHERE status = 2
-        AND ( project_id = " . db_param() . " OR project_id = 0 )
-        ORDER BY project_id DESC
-        LIMIT 1";
-    $t_result = db_query( $t_query, array( (int) $p_project_id ) );
+    $t_result = db_query(
+        "SELECT * FROM $t_table WHERE status = 2 AND project_id = " . db_param()
+        . " AND subproject_id = 0 ORDER BY id DESC LIMIT 1",
+        array( $t_pid )
+    );
     $t_row = db_fetch_array( $t_result );
-    return ( $t_row !== false ) ? $t_row : null;
+    if( $t_row !== false ) {
+        return $t_row;
+    }
+
+    // 2. Ebeveyn proje hiyerarşisini kontrol et
+    // Bug'ın projesi bir alt proje mi?
+    $t_parents = process_get_all_parent_project_ids( $t_pid );
+
+    foreach( $t_parents as $t_parent_id ) {
+        // 2a. Ebeveyn projede bu alt proje için spesifik akış var mı?
+        db_param_push();
+        $t_result = db_query(
+            "SELECT * FROM $t_table WHERE status = 2 AND project_id = " . db_param()
+            . " AND subproject_id = " . db_param() . " ORDER BY id DESC LIMIT 1",
+            array( (int) $t_parent_id, $t_pid )
+        );
+        $t_row = db_fetch_array( $t_result );
+        if( $t_row !== false ) {
+            return $t_row;
+        }
+
+        // 2b. Ebeveyn projede "Tüm Alt Projeler" akışı var mı?
+        db_param_push();
+        $t_result = db_query(
+            "SELECT * FROM $t_table WHERE status = 2 AND project_id = " . db_param()
+            . " AND subproject_id = 0 ORDER BY id DESC LIMIT 1",
+            array( (int) $t_parent_id )
+        );
+        $t_row = db_fetch_array( $t_result );
+        if( $t_row !== false ) {
+            return $t_row;
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -229,6 +299,7 @@ function process_transition_exists( $p_flow_id, $p_from_status, $p_to_status ) {
 /**
  * Get flow progress information for a bug.
  * Returns all steps with their completion status.
+ * KRİTİK: Akış bilgisini instance'ın flow_id'sinden okur (talep oluşturulduğundaki akış).
  *
  * @param int $p_bug_id Bug ID
  * @return array|null Progress data or null if no process
@@ -237,13 +308,22 @@ function process_get_flow_progress( $p_bug_id ) {
     if( !bug_exists( $p_bug_id ) ) {
         return null;
     }
-    $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
-    $t_flow = process_get_active_flow_for_project( $t_project_id );
+
+    require_once( dirname( __FILE__ ) . '/flow_api.php' );
+
+    // KRİTİK: Instance'ın flow_id referansını kullan (Sistem Denetimi #1)
+    $t_instance = process_get_instance( $p_bug_id );
+    if( $t_instance !== null ) {
+        $t_flow = flow_get( (int) $t_instance['flow_id'] );
+    } else {
+        // Fallback: instance yoksa proje bazlı akış ara
+        $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
+        $t_flow = process_get_active_flow_for_project( $t_project_id );
+    }
     if( $t_flow === null ) {
         return null;
     }
 
-    require_once( dirname( __FILE__ ) . '/flow_api.php' );
     $t_steps = flow_get_steps( (int) $t_flow['id'] );
     if( empty( $t_steps ) ) {
         return null;

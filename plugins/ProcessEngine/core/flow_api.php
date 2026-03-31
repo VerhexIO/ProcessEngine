@@ -10,6 +10,7 @@
 define( 'FLOW_STATUS_DRAFT',   0 );
 define( 'FLOW_STATUS_PENDING', 1 );
 define( 'FLOW_STATUS_ACTIVE',  2 );
+define( 'FLOW_STATUS_PASSIVE', 3 );
 
 /**
  * Get all flow definitions.
@@ -49,21 +50,23 @@ function flow_get( $p_flow_id ) {
  * @param string $p_name Flow name
  * @param string $p_description Description
  * @param int $p_project_id Project ID (0 for global)
+ * @param int $p_subproject_id Subproject ID (0 = all subprojects)
  * @return int New flow ID
  */
-function flow_create( $p_name, $p_description = '', $p_project_id = 0 ) {
+function flow_create( $p_name, $p_description = '', $p_project_id = 0, $p_subproject_id = 0 ) {
     $t_table = plugin_table( 'flow_definition' );
     $t_now = time();
     db_param_push();
     db_query(
-        "INSERT INTO $t_table (name, description, status, project_id, created_by, created_at, updated_at)
+        "INSERT INTO $t_table (name, description, status, project_id, subproject_id, created_by, created_at, updated_at)
          VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
-         . db_param() . ", " . db_param() . ", " . db_param() . ")",
+         . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
         array(
             $p_name,
             $p_description,
             FLOW_STATUS_DRAFT,
             (int) $p_project_id,
+            (int) $p_subproject_id,
             (int) auth_get_current_user_id(),
             $t_now,
             $t_now,
@@ -73,31 +76,43 @@ function flow_create( $p_name, $p_description = '', $p_project_id = 0 ) {
 }
 
 /**
- * Update flow metadata (name, description, project_id).
+ * Update flow metadata (name, description, project_id, subproject_id).
  *
  * @param int $p_flow_id Flow ID
  * @param string $p_name New name
  * @param string $p_description New description
- * @param int $p_project_id Project ID (0 for global)
+ * @param int $p_project_id Project ID (-1 = don't change)
+ * @param int $p_subproject_id Subproject ID (-1 = don't change)
  */
-function flow_update( $p_flow_id, $p_name, $p_description = '', $p_project_id = -1 ) {
+function flow_update( $p_flow_id, $p_name, $p_description = '', $p_project_id = -1, $p_subproject_id = -1 ) {
     $t_table = plugin_table( 'flow_definition' );
 
+    $t_sets = array();
+    $t_params = array();
+
+    $t_sets[] = "name = " . db_param();
+    $t_params[] = $p_name;
+    $t_sets[] = "description = " . db_param();
+    $t_params[] = $p_description;
+
     if( $p_project_id >= 0 ) {
-        db_param_push();
-        db_query(
-            "UPDATE $t_table SET name = " . db_param() . ", description = " . db_param()
-            . ", project_id = " . db_param() . ", updated_at = " . db_param() . " WHERE id = " . db_param(),
-            array( $p_name, $p_description, (int) $p_project_id, time(), (int) $p_flow_id )
-        );
-    } else {
-        db_param_push();
-        db_query(
-            "UPDATE $t_table SET name = " . db_param() . ", description = " . db_param()
-            . ", updated_at = " . db_param() . " WHERE id = " . db_param(),
-            array( $p_name, $p_description, time(), (int) $p_flow_id )
-        );
+        $t_sets[] = "project_id = " . db_param();
+        $t_params[] = (int) $p_project_id;
     }
+    if( $p_subproject_id >= 0 ) {
+        $t_sets[] = "subproject_id = " . db_param();
+        $t_params[] = (int) $p_subproject_id;
+    }
+
+    $t_sets[] = "updated_at = " . db_param();
+    $t_params[] = time();
+    $t_params[] = (int) $p_flow_id;
+
+    db_param_push();
+    db_query(
+        "UPDATE $t_table SET " . implode( ', ', $t_sets ) . " WHERE id = " . db_param(),
+        $t_params
+    );
 }
 
 /**
@@ -279,7 +294,7 @@ function flow_update_step( $p_step_id, $p_data ) {
 }
 
 /**
- * Delete a step and its transitions.
+ * Delete a step and its transitions + subprocess targets (cascade).
  *
  * @param int $p_step_id Step ID
  */
@@ -287,6 +302,9 @@ function flow_delete_step( $p_step_id ) {
     $t_step_table = plugin_table( 'step' );
     $t_transition_table = plugin_table( 'transition' );
     $t_id = (int) $p_step_id;
+
+    // Cascade: subprocess hedefleri sil (Sistem Denetimi #7)
+    flow_delete_subprocess_targets( $t_id );
 
     db_param_push();
     db_query(
@@ -657,10 +675,11 @@ function flow_compute_topological_order( $p_flow_id ) {
 
 /**
  * Publish a flow: set status to ACTIVE.
- * Deactivates any previously active flow for the same project.
+ * Deactivates any previously active flow for the same project+subproject.
+ * Validates subproject rules (A/B) before publishing.
  *
  * @param int $p_flow_id Flow ID
- * @return bool True on success
+ * @return bool|string True on success, false on validation fail, 'rule_conflict' on rule violation
  */
 function flow_publish( $p_flow_id ) {
     $t_flow = flow_get( $p_flow_id );
@@ -676,13 +695,21 @@ function flow_publish( $p_flow_id ) {
 
     $t_table = plugin_table( 'flow_definition' );
     $t_project_id = (int) $t_flow['project_id'];
+    $t_subproject_id = isset( $t_flow['subproject_id'] ) ? (int) $t_flow['subproject_id'] : 0;
 
-    // Deactivate previously active flows for this project
+    // Alt proje kuralı kontrolü (Kısıtlama A/B)
+    $t_rule_check = flow_validate_project_rules( $t_project_id, $t_subproject_id, (int) $p_flow_id );
+    if( $t_rule_check !== true ) {
+        return $t_rule_check;
+    }
+
+    // Deactivate previously active flows for the same project+subproject scope
     db_param_push();
     db_query(
         "UPDATE $t_table SET status = " . db_param() . ", updated_at = " . db_param()
-        . " WHERE project_id = " . db_param() . " AND status = " . db_param() . " AND id != " . db_param(),
-        array( FLOW_STATUS_DRAFT, time(), $t_project_id, FLOW_STATUS_ACTIVE, (int) $p_flow_id )
+        . " WHERE project_id = " . db_param() . " AND subproject_id = " . db_param()
+        . " AND status = " . db_param() . " AND id != " . db_param(),
+        array( FLOW_STATUS_DRAFT, time(), $t_project_id, $t_subproject_id, FLOW_STATUS_ACTIVE, (int) $p_flow_id )
     );
 
     // Activate this flow
@@ -691,6 +718,89 @@ function flow_publish( $p_flow_id ) {
         "UPDATE $t_table SET status = " . db_param() . ", updated_at = " . db_param() . " WHERE id = " . db_param(),
         array( FLOW_STATUS_ACTIVE, time(), (int) $p_flow_id )
     );
+
+    return true;
+}
+
+/**
+ * Set a flow to PASSIVE status.
+ * Only allowed if no ACTIVE/WAITING instances exist.
+ *
+ * @param int $p_flow_id Flow ID
+ * @return bool|string True on success, 'has_instances' if blocked, false if not active
+ */
+function flow_set_passive( $p_flow_id ) {
+    $t_flow = flow_get( $p_flow_id );
+    if( $t_flow === null || (int) $t_flow['status'] !== FLOW_STATUS_ACTIVE ) {
+        return false;
+    }
+
+    // Aktif instance varsa pasife alma
+    $t_inst_table = plugin_table( 'process_instance' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT COUNT(*) AS cnt FROM $t_inst_table WHERE flow_id = " . db_param()
+        . " AND status IN ('ACTIVE', 'WAITING')",
+        array( (int) $p_flow_id )
+    );
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row !== false && (int) $t_row['cnt'] > 0 ) {
+        return 'has_instances';
+    }
+
+    $t_table = plugin_table( 'flow_definition' );
+    db_param_push();
+    db_query(
+        "UPDATE $t_table SET status = " . db_param() . ", updated_at = " . db_param()
+        . " WHERE id = " . db_param(),
+        array( FLOW_STATUS_PASSIVE, time(), (int) $p_flow_id )
+    );
+
+    return true;
+}
+
+/**
+ * Validate project/subproject rules for flows.
+ * Rule A: If a "All Subprojects" (subproject_id=0) active flow exists, no specific subproject flow allowed.
+ * Rule B: If specific subproject flow(s) exist, no "All Subprojects" flow allowed.
+ *
+ * @param int $p_project_id Project ID
+ * @param int $p_subproject_id Subproject ID (0 = all subprojects)
+ * @param int $p_exclude_flow_id Flow ID to exclude from check (self)
+ * @return bool|string True if valid, 'rule_conflict_all' or 'rule_conflict_specific' on violation
+ */
+function flow_validate_project_rules( $p_project_id, $p_subproject_id, $p_exclude_flow_id = 0 ) {
+    $t_table = plugin_table( 'flow_definition' );
+
+    if( $p_subproject_id === 0 ) {
+        // Yayınlamak istediğimiz "Tüm Alt Projeler" akışı
+        // Kural B: Bu projede belirli alt proje akışı var mı?
+        db_param_push();
+        $t_result = db_query(
+            "SELECT COUNT(*) AS cnt FROM $t_table
+             WHERE project_id = " . db_param() . " AND subproject_id > 0
+             AND status = " . db_param() . " AND id != " . db_param(),
+            array( (int) $p_project_id, FLOW_STATUS_ACTIVE, (int) $p_exclude_flow_id )
+        );
+        $t_row = db_fetch_array( $t_result );
+        if( $t_row !== false && (int) $t_row['cnt'] > 0 ) {
+            return 'rule_conflict_specific';
+        }
+    } else {
+        // Yayınlamak istediğimiz belirli alt proje akışı
+        // Kural A: Bu projede "Tüm Alt Projeler" akışı var mı?
+        db_param_push();
+        $t_result = db_query(
+            "SELECT COUNT(*) AS cnt FROM $t_table
+             WHERE project_id = " . db_param() . " AND subproject_id = 0
+             AND status = " . db_param() . " AND id != " . db_param(),
+            array( (int) $p_project_id, FLOW_STATUS_ACTIVE, (int) $p_exclude_flow_id )
+        );
+        $t_row = db_fetch_array( $t_result );
+        if( $t_row !== false && (int) $t_row['cnt'] > 0 ) {
+            return 'rule_conflict_all';
+        }
+    }
 
     return true;
 }

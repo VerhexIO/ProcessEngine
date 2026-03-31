@@ -43,8 +43,12 @@ if( !$t_validation['valid'] ) {
 // Publish
 $t_result = flow_publish( $t_flow_id );
 
-if( $t_result ) {
-    echo json_encode( array( 'success' => true ) );
+if( $t_result === true ) {
+    echo json_encode( array( 'success' => true, '_csrf_token' => form_security_token( 'ProcessEngine_flow_editor' ) ) );
+} else if( $t_result === 'rule_conflict_all' ) {
+    echo json_encode( array( 'success' => false, 'error' => plugin_lang_get( 'rule_conflict_all_subprojects' ) ) );
+} else if( $t_result === 'rule_conflict_specific' ) {
+    echo json_encode( array( 'success' => false, 'error' => plugin_lang_get( 'rule_conflict_specific_subproject' ) ) );
 } else {
-    echo json_encode( array( 'success' => false, 'error' => 'Publish failed' ) );
+    echo json_encode( array( 'success' => false, 'error' => plugin_lang_get( 'flow_publish_failed' ) ) );
 }

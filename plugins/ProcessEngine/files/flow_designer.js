@@ -63,6 +63,7 @@
         bindCanvasEvents();
         bindModal();
         bindTransitionModal();
+        bindProjectSubprojectChange();
 
         // Kaydedilmemiş değişiklik uyarısı
         window.addEventListener('beforeunload', function(e) {
@@ -824,13 +825,51 @@
         document.getElementById('pe-btn-publish').addEventListener('click', doPublish);
     }
 
+    // Faz 14: Proje değiştiğinde alt proje listesini güncelle
+    function bindProjectSubprojectChange() {
+        var projectEl = document.getElementById('pe-flow-project');
+        var subprojectEl = document.getElementById('pe-flow-subproject');
+        if (!projectEl || !subprojectEl) return;
+
+        // Proje → alt proje haritasını PHP'den JSON olarak oku
+        var configEl = document.getElementById('pe-config');
+        var subprojectMap = {};
+        if (configEl && configEl.getAttribute('data-project-subprojects')) {
+            try {
+                subprojectMap = JSON.parse(configEl.getAttribute('data-project-subprojects'));
+            } catch(e) {}
+        }
+
+        var allLabel = subprojectEl.getAttribute('data-all-label') || 'Tüm Alt Projeler';
+
+        projectEl.addEventListener('change', function() {
+            var pid = projectEl.value;
+            // Alt proje listesini temizle ve yeniden doldur
+            subprojectEl.innerHTML = '<option value="0">' + allLabel + '</option>';
+
+            if (pid && subprojectMap[pid]) {
+                var subs = subprojectMap[pid];
+                for (var i = 0; i < subs.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = subs[i].id;
+                    opt.textContent = subs[i].name;
+                    subprojectEl.appendChild(opt);
+                }
+            }
+
+            isDirty = true;
+        });
+    }
+
     function buildPayload() {
         var projectEl = document.getElementById('pe-flow-project');
+        var subprojectEl = document.getElementById('pe-flow-subproject');
         return {
             flow_id: PE_FLOW_ID,
             name: document.getElementById('pe-flow-name').value,
             description: document.getElementById('pe-flow-desc').value,
             project_id: projectEl ? parseInt(projectEl.value) || 0 : 0,
+            subproject_id: subprojectEl ? parseInt(subprojectEl.value) || 0 : 0,
             steps: steps.map(function(s) {
                 return {
                     temp_id: s.id,

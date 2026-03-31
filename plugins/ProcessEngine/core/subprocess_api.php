@@ -694,6 +694,14 @@ function subprocess_advance_parent( $p_parent_inst_id, $p_parent_step_id, $p_dep
 
     // Ertelenmiş: Ebeveyn bug'ın durumunu güncelle
     $t_new_mantis_status = (int) $t_next_step['mantis_status'];
+    // KPI: subprocess adımından çıkış + sonraki adıma giriş
+    $t_parent_step_for_kpi = $p_parent_step_id;
+    if( plugin_config_get( 'enable_kpi_tracking' ) == ON ) {
+        require_once( __DIR__ . '/kpi_api.php' );
+        kpi_on_step_exit( $p_parent_inst_id, (int) $t_parent_step_for_kpi, 'advance' );
+        kpi_on_step_enter( $p_parent_inst_id, $t_parent_bug_id, $t_next_step_id, $t_flow_id );
+    }
+
     $t_user_id = auth_get_current_user_id();
     register_shutdown_function( function() use ( $t_parent_bug_id, $t_new_mantis_status, $t_next_step, $t_flow_id, $t_next_step_id, $p_parent_inst_id, $t_user_id ) {
         if( !bug_exists( $t_parent_bug_id ) ) {

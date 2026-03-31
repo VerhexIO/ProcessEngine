@@ -14,6 +14,7 @@ form_security_validate( 'ProcessEngine_dashboard_action' );
 require_once( dirname( __DIR__ ) . '/core/process_api.php' );
 require_once( dirname( __DIR__ ) . '/core/subprocess_api.php' );
 require_once( dirname( __DIR__ ) . '/core/sla_api.php' );
+require_once( dirname( __DIR__ ) . '/core/kpi_api.php' );
 
 $t_action = gpc_get_string( 'action', '' );
 $t_bug_id = gpc_get_int( 'bug_id', 0 );
@@ -163,6 +164,12 @@ function pe_action_advance_step( $p_bug_id ) {
     sla_complete_tracking( $p_bug_id );
     if( (int) $t_next_step['sla_hours'] > 0 ) {
         sla_start_tracking( $p_bug_id, $t_next_step_id, $t_flow_id, (int) $t_next_step['sla_hours'] );
+    }
+
+    // 3b. KPI: Eski adım çıkış + yeni adım giriş
+    if( plugin_config_get( 'enable_kpi_tracking' ) == ON ) {
+        kpi_on_step_exit( $t_instance_id, $t_current_step_id, 'advance' );
+        kpi_on_step_enter( $t_instance_id, $p_bug_id, $t_next_step_id, $t_flow_id );
     }
 
     // 4. Process log kaydı yaz
@@ -513,6 +520,11 @@ function pe_action_rollback_step( $p_bug_id ) {
     sla_complete_tracking( $p_bug_id );
     if( (int) $t_prev_step['sla_hours'] > 0 ) {
         sla_start_tracking( $p_bug_id, $t_prev_step_id, $t_flow_id, (int) $t_prev_step['sla_hours'] );
+    }
+
+    // 3b. KPI: Rollback işlemi
+    if( plugin_config_get( 'enable_kpi_tracking' ) == ON ) {
+        kpi_on_rollback( $t_instance_id, $p_bug_id, $t_current_step_id, $t_prev_step_id, $t_flow_id );
     }
 
     // 4. Process log kaydı yaz (event_type = step_rollback)
