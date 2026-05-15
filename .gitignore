@@ -34,6 +34,16 @@ tests/.test-state.json
 tests/.faz11-test-state.json
 tests/.full-e2e-state.json
 
+# Veritabanı dökümleri (asla commit'lenmemeli)
+*.sql
+bugtracker_test.sql
+
 # Dependencies
 vendor/
 node_modules/
+.deck
+.tasks/
+.locks/
+.dashboard
+.brain/archive/
+!.brain/archive/

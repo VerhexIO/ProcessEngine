@@ -844,8 +844,11 @@ function flow_save_complete( $p_flow_id, $p_steps, $p_transitions ) {
 
     // Insert new transitions (resolve temp IDs)
     foreach( $p_transitions as $t_tr ) {
-        $t_from = $t_tr['from_step_id'];
-        $t_to = $t_tr['to_step_id'];
+        $t_from = isset( $t_tr['from_step_id'] ) ? $t_tr['from_step_id'] : ( isset( $t_tr['from'] ) ? $t_tr['from'] : '' );
+        $t_to = isset( $t_tr['to_step_id'] ) ? $t_tr['to_step_id'] : ( isset( $t_tr['to'] ) ? $t_tr['to'] : '' );
+        if( $t_from === '' || $t_to === '' ) {
+            continue;
+        }
 
         // Resolve temp IDs to real IDs
         if( isset( $t_id_map[$t_from] ) ) {

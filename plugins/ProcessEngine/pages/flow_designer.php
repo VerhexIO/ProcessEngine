@@ -507,7 +507,7 @@ if( $t_flow_id === 0 ) {
                         <label><?php echo plugin_lang_get( 'child_project' ); ?></label>
                         <select id="pe-modal-child-project" class="form-control input-sm">
                             <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
-                            <?php foreach( $t_projects as $t_proj ) { ?>
+                            <?php foreach( $t_all_projects as $t_proj ) { ?>
                             <option value="<?php echo (int) $t_proj['id']; ?>"><?php echo string_display_line( $t_proj['name'] ); ?></option>
                             <?php } ?>
                         </select>
@@ -535,7 +535,7 @@ if( $t_flow_id === 0 ) {
                             </select>
                             <select class="form-control input-sm pe-target-project" style="width:150px;">
                                 <option value="0"><?php echo plugin_lang_get( 'all_projects' ); ?></option>
-                                <?php foreach( $t_projects as $t_proj ) { ?>
+                                <?php foreach( $t_all_projects as $t_proj ) { ?>
                                 <option value="<?php echo (int) $t_proj['id']; ?>"><?php echo string_display_line( $t_proj['name'] ); ?></option>
                                 <?php } ?>
                             </select>

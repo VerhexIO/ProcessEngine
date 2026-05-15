@@ -205,7 +205,7 @@ function kpi_get_step_stats( $p_flow_id, $p_step_id = 0 ) {
  * Get flow-level KPI statistics.
  *
  * @param int $p_flow_id Flow ID
- * @return array Flow stats: total_avg, completed_count, active_count
+ * @return array Flow stats: avg_business_minutes, completed_count
  */
 function kpi_get_flow_stats( $p_flow_id ) {
     $t_table = plugin_table( 'step_kpi' );
@@ -231,8 +231,8 @@ function kpi_get_flow_stats( $p_flow_id ) {
     }
 
     return array(
-        'avg_total_business_minutes' => $t_avg,
-        'instance_count' => count( $t_totals ),
+        'avg_business_minutes' => $t_avg,
+        'completed_count' => count( $t_totals ),
     );
 }
 
@@ -271,7 +271,7 @@ function kpi_get_department_stats( $p_department, $p_date_from = 0, $p_date_to =
     return array(
         'department' => $p_department,
         'avg_business_minutes' => $t_row ? round( (float) $t_row['avg_bm'], 1 ) : 0,
-        'count' => $t_row ? (int) $t_row['cnt'] : 0,
+        'total_records' => $t_row ? (int) $t_row['cnt'] : 0,
         'rollback_count' => $t_row ? (int) $t_row['rollback_cnt'] : 0,
     );
 }
