@@ -47,3 +47,22 @@ node_modules/
 .dashboard
 .brain/archive/
 !.brain/archive/
+
+# deckent orkestrasyon — deckentle gelen HER ŞEY izleme dışı (CLAUDE.md/.claude gibi)
+# Yerel çalışma durumu / önbellek
+.npm-cache/
+.brain/
+.codex/
+.deckent/
+# Yapılandırma / iskele
+AGENTS.md
+DECKENT.md
+DIRECTIVES.md
+# Docker backend (deckent worker imajı)
+Dockerfile.worker
+.dockerignore
+deckent-bug/
+# deckent dokümanları
+docs/CHANGELOG.md
+docs/SPRINT-LOG.md
+docs/Deckent_Docker_Backend_Windows.md
