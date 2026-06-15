@@ -40,7 +40,7 @@ function process_seed_load() {
             'Fiyat Talebi',
             'Satış departmanından gelen fiyat taleplerinin fiyatlandırma, satınalma ve onay sürecinden geçirilmesi.',
             2, // AKTIF
-            0, // Global
+            0, // Global (linear demo akışı — belirli projeye bağlı değil)
             $t_user_id,
             $t_now,
             $t_now,
@@ -163,7 +163,7 @@ function process_seed_load() {
     }
 
     // ---- Flow 3: Hiyerarşik Fiyat Talebi (Subprocess Demo) ----
-    // Ana akış: 5 adım, 2'si subprocess (adım 3 ve 5)
+    // Ana akış: 5 adım, 2'si subprocess (adım 3 ve 4 — terminal olmayan adımlar)
     db_param_push();
     db_query(
         "INSERT INTO $t_flow_table (name, description, status, project_id, created_by, created_at, updated_at)
@@ -173,7 +173,7 @@ function process_seed_load() {
             'Hiyerarşik Fiyat Talebi',
             'Alt süreç (subprocess) destekli fiyat talebi akışı. Satınalma inceleme ve teknik değerlendirme adımları alt süreç olarak çalışır.',
             2, // AKTİF
-            0,
+            2, // Proje 2 (IFS Destek) — E2E B/C/D testleri (subprocess dahil) bu projede koşar
             $t_user_id,
             $t_now,
             $t_now,
@@ -187,8 +187,8 @@ function process_seed_load() {
         array( 'Talep Oluşturma',        'Satış',       10, 4,  1, 'reporter', 100, 100, 0, 'normal',     null, null, 'all' ),
         array( 'Fiyat Analizi',           'Fiyatlandırma',20, 8,  2, 'updater', 300, 100, 0, 'normal',     null, null, 'all' ),
         array( 'Satınalma İnceleme',      'Satınalma',   30, 16, 3, 'updater', 500, 100, 0, 'subprocess', null, null, 'all' ), // child_flow_id will be set to Flow 1
-        array( 'Yönetim Onayı',           'Yönetim',     50, 4,  4, 'manager', 700, 100, 0, 'normal',     null, null, 'all' ),
-        array( 'Teklif Hazırlama',        'Satış Operasyon', 80, 8, 5, 'updater', 900, 100, 0, 'normal', null, null, 'all' ),
+        array( 'Yönetim Onayı',           'Yönetim',     50, 4,  4, 'manager', 700, 100, 0, 'subprocess', null, null, 'all' ), // çoklu hedefli subprocess (manuel bağlama) — terminal olmayan adım
+        array( 'Teklif Hazırlama',        'Satış Operasyon', 80, 8, 5, 'updater', 900, 100, 0, 'normal',     null, null, 'all' ),
     );
 
     $t_flow3_step_ids = array();
@@ -231,7 +231,7 @@ function process_seed_load() {
             'Satınalma İnceleme',
             'Alt süreç olarak kullanılan satınalma inceleme akışı. Tedarikçi araştırma, teklif toplama ve satınalma onayı adımlarını içerir.',
             2, // AKTİF
-            0, // Global
+            3, // Proje 3 (Teknik Destek) — hem alt akış (child_flow) hem proje 3'ün aktif akışı: manuel bağlama (D5) için çocuğun projesinde aktif akış gerekir
             $t_user_id,
             $t_now,
             $t_now,
@@ -291,6 +291,22 @@ function process_seed_load() {
         "UPDATE $t_step_table SET child_flow_id = " . db_param() . " WHERE id = " . db_param(),
         array( $t_flow4_id, $t_flow3_step_ids[2] ) // 3. adım (Satınalma İnceleme)
     );
+
+    // Adım 4 (Yönetim Onayı) çoklu hedefli subprocess — manuel çocuk bağlama için 2 hedef.
+    // count(target) > 1 olduğunda bug view'da manuel "link child" girişi render edilir.
+    // Terminal olmayan adım seçildi: terminal (son) adım subprocess olsa girişte süreç COMPLETED olur.
+    $t_subprocess_target_table = plugin_table( 'subprocess_target' );
+    foreach( array(
+        array( 3, 'Satınalma Süreci' ),     // proje 3 (Teknik Destek)
+        array( 4, 'Teknik Değerlendirme' ), // proje 4 (Bilgi Teknolojileri)
+    ) as $t_s4_target ) {
+        db_param_push();
+        db_query(
+            "INSERT INTO $t_subprocess_target_table (step_id, child_flow_id, child_project_id, target_label)
+             VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ")",
+            array( $t_flow3_step_ids[3], $t_flow4_id, $t_s4_target[0], $t_s4_target[1] ) // 4. adım
+        );
+    }
 
     // Flow 3 Transitions (linear: 1→2→3→4→5)
     for( $i = 0; $i < count( $t_flow3_step_ids ) - 1; $i++ ) {
