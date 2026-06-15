@@ -43,6 +43,8 @@ class ProcessEnginePlugin extends MantisPlugin {
             'departments'               => '',
             'allow_automatic_processes' => OFF,
             'enable_kpi_tracking'       => ON,
+            'rule_bypass_threshold'     => '*',        // Katı kural muafiyet eşiği — '*' = kimse muaf değil (admin/root dahil); bir yetki seviyesi = o seviye ve üstü muaf
+            'reopen_threshold'          => MANAGER,    // Kapanmış süreci yeniden açma eşiği (SLA duraklat/devam)
         );
     }
 
@@ -791,6 +793,9 @@ class ProcessEnginePlugin extends MantisPlugin {
         $t_show_advance = ( $t_can_action && ( $t_inst_status === 'ACTIVE' || $t_inst_status === 'WAITING' ) && $p_next_step !== null );
         $t_show_waiting = ( $t_inst_status === 'WAITING' );
         $t_next_is_subprocess = ( $p_next_step !== null && isset( $p_next_step['step_type'] ) && $p_next_step['step_type'] === 'subprocess' );
+        // Kapanmış süreci yeniden açma — reopen_threshold ve üstü
+        $t_show_reopen = ( ( $t_inst_status === 'COMPLETED' || $t_inst_status === 'CANCELLED' )
+            && access_has_global_level( plugin_config_get( 'reopen_threshold' ) ) );
 
         // Mevcut adım subprocess mi?
         $t_current_is_subprocess = false;
@@ -1036,12 +1041,20 @@ class ProcessEnginePlugin extends MantisPlugin {
                         <?php echo plugin_lang_get( 'subprocess_waiting' ); ?>
                     </span>
                     <?php } ?>
+                    <?php if( $t_show_reopen ) { ?>
+                    <button class="btn btn-sm btn-warning pe-bugview-reopen"
+                            data-bug-id="<?php echo (int) $p_bug_id; ?>"
+                            title="<?php echo string_attribute( plugin_lang_get( 'reopen_confirm' ) ); ?>">
+                        <i class="fa fa-undo"></i>
+                        <?php echo plugin_lang_get( 'btn_reopen' ); ?>
+                    </button>
+                    <?php } ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<?php if( $t_show_advance || $t_subprocess_show_panel ) { ?>
+<?php if( $t_show_advance || $t_subprocess_show_panel || $t_show_reopen ) { ?>
 <input type="hidden" id="pe-bugview-token" value="<?php echo form_security_token( 'ProcessEngine_dashboard_action' ); ?>" />
 <input type="hidden" id="pe-bugview-action-url" value="<?php echo plugin_page( 'dashboard_action' ); ?>" />
 <?php } ?>

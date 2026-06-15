@@ -211,9 +211,26 @@ $s_plugin_ProcessEngine_sla_tree_worst = 'Worst Status';
 # Dashboard Actions (Phase 7)
 $s_plugin_ProcessEngine_config_action_threshold = 'Action Access Level';
 $s_plugin_ProcessEngine_config_action_threshold_help = 'Minimum access level required to advance steps and refresh SLA from the dashboard';
+$s_plugin_ProcessEngine_config_rule_bypass_threshold = 'Rule Bypass Threshold';
+$s_plugin_ProcessEngine_config_rule_bypass_threshold_help = 'This access level and above may bypass step advance/rollback rules (emergency override). If "No bypass" is selected, everyone including admin/root is bound by the rules.';
+$s_plugin_ProcessEngine_rule_bypass_none = 'No bypass (everyone follows rules)';
+$s_plugin_ProcessEngine_config_reopen_threshold = 'Process Reopen Threshold';
+$s_plugin_ProcessEngine_config_reopen_threshold_help = 'This access level and above may reopen closed (completed/cancelled) processes; SLA resumes where it left off on reopen.';
 $s_plugin_ProcessEngine_action_advance_confirm = 'Are you sure you want to advance this issue to the next step?';
 $s_plugin_ProcessEngine_action_advance_success = 'Issue successfully advanced to the next step.';
 $s_plugin_ProcessEngine_action_advance_no_transition = 'No valid transition found from this step.';
+
+// Strict rule engine (Phase 15)
+$s_plugin_ProcessEngine_transition_default_label = 'Transition';
+$s_plugin_ProcessEngine_rule_block_status_is = 'Cannot advance: transition "%1$s" requires issue status "%2$s".';
+$s_plugin_ProcessEngine_rule_block_field_equals = 'Cannot advance: transition "%1$s" requires field "%2$s" to equal "%3$s".';
+$s_plugin_ProcessEngine_rollback_blocked_subprocess = 'Rollback blocked: completed subprocess #%1$d must be cancelled first.';
+$s_plugin_ProcessEngine_btn_reopen = 'Reopen Process';
+$s_plugin_ProcessEngine_reopen_confirm = 'Are you sure you want to reopen this closed process? SLA will resume where it left off (closed time excluded).';
+$s_plugin_ProcessEngine_reopen_success = 'Process reopened; SLA resumes where it left off.';
+$s_plugin_ProcessEngine_reopen_not_closed = 'Process is not closed; only completed/cancelled processes can be reopened.';
+$s_plugin_ProcessEngine_reopen_access_denied = 'You do not have permission to reopen this process.';
+$s_plugin_ProcessEngine_reopen_log_note = 'Process reopened (SLA resumed).';
 $s_plugin_ProcessEngine_action_sla_refreshed = 'SLA status has been refreshed.';
 $s_plugin_ProcessEngine_action_invalid = 'Invalid action.';
 

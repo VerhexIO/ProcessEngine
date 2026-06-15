@@ -53,6 +53,13 @@ $t_working_days              = gpc_get_string( 'working_days', '1,2,3,4,5' );
 $t_departments               = gpc_get_string( 'departments', '' );
 $t_allow_automatic_processes = gpc_get_int( 'allow_automatic_processes', 0 );
 $t_enable_kpi_tracking       = gpc_get_int( 'enable_kpi_tracking', 0 );
+$t_rule_bypass_threshold     = gpc_get_string( 'rule_bypass_threshold', '*' );
+$t_reopen_threshold          = gpc_get_int( 'reopen_threshold', MANAGER );
+
+// Rule bypass: '*' (muafiyet yok) veya bir yetki seviyesi (eşik ve üstü muaf)
+if( $t_rule_bypass_threshold !== '*' ) {
+    $t_rule_bypass_threshold = (int) $t_rule_bypass_threshold;
+}
 
 // Validate working days format
 $t_working_days = preg_replace( '/[^0-9,]/', '', $t_working_days );
@@ -89,6 +96,8 @@ plugin_config_set( 'working_days',              $t_working_days );
 plugin_config_set( 'departments',               $t_departments );
 plugin_config_set( 'allow_automatic_processes', $t_allow_automatic_processes );
 plugin_config_set( 'enable_kpi_tracking',       $t_enable_kpi_tracking );
+plugin_config_set( 'rule_bypass_threshold',     $t_rule_bypass_threshold );
+plugin_config_set( 'reopen_threshold',          $t_reopen_threshold );
 
 form_security_purge( 'ProcessEngine_config_update' );
 print_header_redirect( plugin_page( 'config_page', true ) );

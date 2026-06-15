@@ -22,6 +22,8 @@ $t_working_days              = plugin_config_get( 'working_days' );
 $t_departments               = plugin_config_get( 'departments', '' );
 $t_allow_automatic_processes = plugin_config_get( 'allow_automatic_processes' );
 $t_enable_kpi_tracking       = plugin_config_get( 'enable_kpi_tracking' );
+$t_rule_bypass_threshold     = plugin_config_get( 'rule_bypass_threshold' );
+$t_reopen_threshold          = plugin_config_get( 'reopen_threshold' );
 
 // Access levels for dropdown
 $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access_levels_enum_string' ) );
@@ -106,6 +108,43 @@ $t_access_levels = MantisEnum::getAssocArrayIndexedByValues( config_get( 'access
                                 <select name="action_threshold" class="input-sm">
                                     <?php foreach( $t_access_levels as $t_val => $t_label ) { ?>
                                     <option value="<?php echo $t_val; ?>" <?php echo ( $t_val == $t_action_threshold ) ? 'selected' : ''; ?>>
+                                        <?php echo string_display_line( $t_label ); ?>
+                                    </option>
+                                    <?php } ?>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <!-- Rule Bypass Threshold (Katı kural muafiyeti) -->
+                        <tr>
+                            <td class="category">
+                                <?php echo plugin_lang_get( 'config_rule_bypass_threshold' ); ?>
+                                <br /><small><?php echo plugin_lang_get( 'config_rule_bypass_threshold_help' ); ?></small>
+                            </td>
+                            <td>
+                                <select name="rule_bypass_threshold" class="input-sm">
+                                    <option value="*" <?php echo ( $t_rule_bypass_threshold === '*' ) ? 'selected' : ''; ?>>
+                                        <?php echo plugin_lang_get( 'rule_bypass_none' ); ?>
+                                    </option>
+                                    <?php foreach( $t_access_levels as $t_val => $t_label ) { ?>
+                                    <option value="<?php echo $t_val; ?>" <?php echo ( $t_rule_bypass_threshold !== '*' && $t_val == $t_rule_bypass_threshold ) ? 'selected' : ''; ?>>
+                                        <?php echo string_display_line( $t_label ); ?>
+                                    </option>
+                                    <?php } ?>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <!-- Reopen Threshold (Kapanmış süreci yeniden açma) -->
+                        <tr>
+                            <td class="category">
+                                <?php echo plugin_lang_get( 'config_reopen_threshold' ); ?>
+                                <br /><small><?php echo plugin_lang_get( 'config_reopen_threshold_help' ); ?></small>
+                            </td>
+                            <td>
+                                <select name="reopen_threshold" class="input-sm">
+                                    <?php foreach( $t_access_levels as $t_val => $t_label ) { ?>
+                                    <option value="<?php echo $t_val; ?>" <?php echo ( $t_val == $t_reopen_threshold ) ? 'selected' : ''; ?>>
                                         <?php echo string_display_line( $t_label ); ?>
                                     </option>
                                     <?php } ?>

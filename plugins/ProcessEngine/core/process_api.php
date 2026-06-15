@@ -778,6 +778,77 @@ function process_get_valid_transitions( $p_flow_id, $p_step_id, $p_bug_id ) {
     return $t_valid;
 }
 
+/**
+ * Bir adımdan çıkan TÜM geçişleri döndürür (koşul filtresi uygulanmaz).
+ *
+ * @param int $p_flow_id Akış ID
+ * @param int $p_step_id Adım ID
+ * @return array Geçiş satırları
+ */
+function process_get_all_transitions( $p_flow_id, $p_step_id ) {
+    $t_trans_table = plugin_table( 'transition' );
+    db_param_push();
+    $t_result = db_query(
+        "SELECT * FROM $t_trans_table WHERE flow_id = " . db_param()
+        . " AND from_step_id = " . db_param() . " ORDER BY id ASC",
+        array( (int) $p_flow_id, (int) $p_step_id )
+    );
+    $t_all = array();
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_all[] = $t_row;
+    }
+    return $t_all;
+}
+
+/**
+ * Kullanıcı katı süreç kurallarını (ileri/geri koşulları) atlayabilir mi?
+ *
+ * rule_bypass_threshold config:
+ *   - '*' (veya 'X'/'')  → kimse muaf değil (admin/root dahil herkes kurala tabi)
+ *   - bir yetki seviyesi → o seviye VE üstü kuralları atlayabilir
+ *
+ * @return bool Kullanıcı muafsa true
+ */
+function pe_user_can_bypass_rules() {
+    $t_threshold = plugin_config_get( 'rule_bypass_threshold' );
+    if( $t_threshold === '*' || $t_threshold === 'X' || $t_threshold === '' || $t_threshold === null ) {
+        return false;
+    }
+    return access_has_global_level( (int) $t_threshold );
+}
+
+/**
+ * İlerlemeyi engelleyen geçiş koşulunun spesifik açıklamasını döndürür.
+ * Koşulu sağlanmayan ilk geçiş için insan-okur neden döner; koşul engeli yoksa '' döner.
+ *
+ * @param int $p_flow_id Akış ID
+ * @param int $p_step_id Mevcut adım ID
+ * @param int $p_bug_id  Sorun ID
+ * @return string Engel açıklaması veya ''
+ */
+function process_describe_blocked_advance( $p_flow_id, $p_step_id, $p_bug_id ) {
+    $t_all = process_get_all_transitions( $p_flow_id, $p_step_id );
+    foreach( $t_all as $t_trans ) {
+        if( process_evaluate_condition( $t_trans, $p_bug_id ) ) {
+            continue; // bu geçiş zaten geçerli, engel değil
+        }
+        $t_type  = isset( $t_trans['condition_type'] ) ? $t_trans['condition_type'] : '';
+        $t_field = isset( $t_trans['condition_field'] ) ? $t_trans['condition_field'] : '';
+        $t_value = isset( $t_trans['condition_value'] ) ? $t_trans['condition_value'] : '';
+        $t_label = ( isset( $t_trans['label'] ) && $t_trans['label'] !== '' )
+            ? $t_trans['label'] : plugin_lang_get( 'transition_default_label' );
+
+        if( $t_type === 'status_is' ) {
+            $t_status_label = get_enum_element( 'status', (int) $t_value );
+            return sprintf( plugin_lang_get( 'rule_block_status_is' ), $t_label, $t_status_label );
+        }
+        if( $t_type === 'field_equals' ) {
+            return sprintf( plugin_lang_get( 'rule_block_field_equals' ), $t_label, $t_field, $t_value );
+        }
+    }
+    return '';
+}
+
 // ============================================================
 // Faz 12: Rapor API Fonksiyonları
 // ============================================================

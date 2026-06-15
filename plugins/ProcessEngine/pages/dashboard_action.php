@@ -62,6 +62,10 @@ switch( $t_action ) {
         $t_response = pe_action_rollback_step( $t_bug_id );
         break;
 
+    case 'reopen_process':
+        $t_response = pe_action_reopen_process( $t_bug_id );
+        break;
+
     case 'global_sla_check':
         $t_response = pe_action_global_sla_check();
         break;
@@ -97,6 +101,9 @@ function pe_action_advance_step( $p_bug_id ) {
     $t_instance_id = (int) $t_instance['id'];
     $t_inst_status = isset( $t_instance['status'] ) ? $t_instance['status'] : 'ACTIVE';
 
+    // Katı kural muafiyeti — eşik ve üstü kuralları atlayabilir ('*' = kimse atlayamaz, admin/root dahil)
+    $t_can_bypass = pe_user_can_bypass_rules();
+
     // WAITING durumdan ilerleme — subprocess adımında kullanıcı manuel olarak ilerletebilir
     $t_was_waiting = false;
     if( $t_inst_status === 'WAITING' ) {
@@ -111,8 +118,8 @@ function pe_action_advance_step( $p_bug_id ) {
     $t_cur_step_result = db_query( "SELECT * FROM $t_step_table WHERE id = " . db_param(), array( $t_current_step_id ) );
     $t_current_step = db_fetch_array( $t_cur_step_result );
 
-    // Çıkış koşulu kontrolü (subprocess bekleme durumundan ilerletiliyorsa atla — kullanıcı bilinçli ilerletiyor)
-    if( $t_current_step !== false && !$t_was_waiting ) {
+    // Çıkış koşulu kontrolü (subprocess bekleme durumundan ilerletiliyorsa veya kullanıcı muafsa atla)
+    if( $t_current_step !== false && !$t_was_waiting && !$t_can_bypass ) {
         $t_exit_check = process_check_step_exit_conditions( $p_bug_id, $t_current_step );
         if( !$t_exit_check['can_advance'] ) {
             return array( 'success' => false, 'message' => $t_exit_check['reason'] );
@@ -121,14 +128,23 @@ function pe_action_advance_step( $p_bug_id ) {
 
     $t_advance_note = plugin_lang_get( 'action_advance_success' );
 
-    // Geçerli geçişleri bul
-    $t_valid_transitions = process_get_valid_transitions( $t_flow_id, $t_current_step_id, $p_bug_id );
-    if( empty( $t_valid_transitions ) ) {
-        return array( 'success' => false, 'message' => plugin_lang_get( 'action_advance_no_transition' ) );
+    // Geçişleri bul — muaf kullanıcı koşulu sağlanmayan geçişleri de kullanabilir (acil müdahale)
+    if( $t_can_bypass ) {
+        $t_candidate_transitions = process_get_all_transitions( $t_flow_id, $t_current_step_id );
+    } else {
+        $t_candidate_transitions = process_get_valid_transitions( $t_flow_id, $t_current_step_id, $p_bug_id );
+    }
+    if( empty( $t_candidate_transitions ) ) {
+        // Koşul yüzünden mi engellendi (spesifik neden), yoksa hiç geçiş yok mu?
+        $t_block_reason = $t_can_bypass ? '' : process_describe_blocked_advance( $t_flow_id, $t_current_step_id, $p_bug_id );
+        return array(
+            'success' => false,
+            'message' => ( $t_block_reason !== '' ) ? $t_block_reason : plugin_lang_get( 'action_advance_no_transition' ),
+        );
     }
 
-    // İlk geçerli geçişi seç
-    $t_transition = $t_valid_transitions[0];
+    // İlk uygun geçişi seç
+    $t_transition = $t_candidate_transitions[0];
     $t_next_step_id = (int) $t_transition['to_step_id'];
 
     // Sonraki adımın bilgilerini oku
@@ -350,6 +366,72 @@ function pe_action_link_manual_child( $p_bug_id ) {
 }
 
 /**
+ * Reopen a closed (COMPLETED/CANCELLED) process. SLA resumes excluding closed time.
+ *
+ * @param int $p_bug_id Bug ID
+ * @return array Response array
+ */
+function pe_action_reopen_process( $p_bug_id ) {
+    $t_instance = subprocess_get_instance( $p_bug_id );
+    if( $t_instance === null ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'no_data' ) );
+    }
+
+    // Yetki: reopen_threshold ve üstü kapanmış süreci yeniden açabilir
+    if( !access_has_global_level( plugin_config_get( 'reopen_threshold' ) ) ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'reopen_access_denied' ) );
+    }
+
+    $t_status = isset( $t_instance['status'] ) ? $t_instance['status'] : 'ACTIVE';
+    if( $t_status !== 'COMPLETED' && $t_status !== 'CANCELLED' ) {
+        return array( 'success' => false, 'message' => plugin_lang_get( 'reopen_not_closed' ) );
+    }
+
+    $t_instance_id     = (int) $t_instance['id'];
+    $t_current_step_id = (int) $t_instance['current_step_id'];
+    $t_flow_id         = (int) $t_instance['flow_id'];
+    $t_completed_at    = isset( $t_instance['completed_at'] ) ? (int) $t_instance['completed_at'] : 0;
+    $t_closed_seconds  = ( $t_completed_at > 0 ) ? max( 0, time() - $t_completed_at ) : 0;
+
+    // 1. Süreç örneğini ACTIVE'e al + completed_at temizle
+    subprocess_update_instance_status( $t_instance_id, INSTANCE_STATUS_ACTIVE );
+    $t_inst_table = plugin_table( 'process_instance' );
+    db_param_push();
+    db_query(
+        "UPDATE $t_inst_table SET completed_at = NULL WHERE id = " . db_param(),
+        array( $t_instance_id )
+    );
+
+    // 2. SLA'yı kaldığı yerden devam ettir (kapalı kalınan süre hariç tutulur)
+    sla_resume_after_reopen( $p_bug_id, $t_current_step_id, $t_closed_seconds );
+
+    // 3. Süreç logu
+    $t_cur_status = (int) bug_get_field( $p_bug_id, 'status' );
+    $t_log_table = plugin_table( 'log' );
+    db_param_push();
+    db_query(
+        "INSERT INTO $t_log_table (bug_id, flow_id, step_id, from_status, to_status, user_id, note, created_at, event_type, transition_label)
+         VALUES (" . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . ", " . db_param() . ", " . db_param() . ", "
+        . db_param() . ", " . db_param() . ")",
+        array(
+            $p_bug_id,
+            $t_flow_id,
+            $t_current_step_id,
+            $t_cur_status,
+            $t_cur_status,
+            auth_get_current_user_id(),
+            plugin_lang_get( 'reopen_log_note' ),
+            time(),
+            'process_reopened',
+            '',
+        )
+    );
+
+    return array( 'success' => true, 'message' => plugin_lang_get( 'reopen_success' ) );
+}
+
+/**
  * Refresh SLA status for a bug.
  *
  * @param int $p_bug_id Bug ID
@@ -453,6 +535,9 @@ function pe_action_rollback_step( $p_bug_id ) {
     $t_instance_id = (int) $t_instance['id'];
     $t_inst_status = isset( $t_instance['status'] ) ? $t_instance['status'] : 'ACTIVE';
 
+    // Katı kural muafiyeti — eşik ve üstü engelleri atlayabilir ('*' = kimse atlayamaz)
+    $t_can_bypass = pe_user_can_bypass_rules();
+
     // Sadece ACTIVE, WAITING veya COMPLETED durumda geri alma yapılabilir
     if( !in_array( $t_inst_status, array( 'ACTIVE', 'WAITING', 'COMPLETED' ) ) ) {
         return array( 'success' => false, 'message' => plugin_lang_get( 'action_rollback_no_prev' ) );
@@ -482,6 +567,27 @@ function pe_action_rollback_step( $p_bug_id ) {
     }
 
     $t_prev_step_id = (int) $t_prev_step['id'];
+
+    // Katı kural: yolu kapatan tamamlanmış alt süreç (subprocess çocuk) varsa geri alma engellenir.
+    // Kullanıcı önce o alt süreci iptal etmeli (muaf kullanıcı atlar).
+    if( !$t_can_bypass ) {
+        $t_blocking_bug = 0;
+        foreach( array( $t_current_step_id, $t_prev_step_id ) as $t_check_step ) {
+            foreach( subprocess_get_children( $t_instance_id, $t_check_step ) as $t_child ) {
+                if( isset( $t_child['status'] ) && $t_child['status'] === 'COMPLETED' ) {
+                    $t_blocking_bug = (int) $t_child['bug_id'];
+                    break 2;
+                }
+            }
+        }
+        if( $t_blocking_bug > 0 ) {
+            return array(
+                'success' => false,
+                'message' => sprintf( plugin_lang_get( 'rollback_blocked_subprocess' ), $t_blocking_bug ),
+            );
+        }
+    }
+
     $t_old_mantis_status = (int) bug_get_field( $p_bug_id, 'status' );
 
     // COMPLETED instance ise ACTIVE'e döndür

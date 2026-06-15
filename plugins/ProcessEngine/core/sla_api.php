@@ -86,6 +86,48 @@ function sla_complete_tracking( $p_bug_id ) {
 }
 
 /**
+ * Kapanmış bir süreç yeniden açıldığında, mevcut adımın SLA'sını kaldığı yerden
+ * devam ettirir. Kapalı kalınan süre SLA'ya YANSITILMAZ: deadline kapalı süre kadar
+ * ötelenir, böylece kalan süre korunur ("duraklat / devam" modeli).
+ *
+ * @param int $p_bug_id        Sorun ID
+ * @param int $p_step_id       Mevcut adım ID
+ * @param int $p_closed_seconds Süreç kapalı kaldığı saniye (now - completed_at)
+ * @return bool Bir SLA kaydı güncellendiyse true
+ */
+function sla_resume_after_reopen( $p_bug_id, $p_step_id, $p_closed_seconds ) {
+    if( $p_closed_seconds < 0 ) {
+        $p_closed_seconds = 0;
+    }
+    $t_table = plugin_table( 'sla_tracking' );
+
+    // Mevcut adımın en güncel SLA kaydı (tamamlanmış olsun olmasın)
+    db_param_push();
+    $t_result = db_query(
+        "SELECT id, deadline_at FROM $t_table WHERE bug_id = " . db_param()
+        . " AND step_id = " . db_param() . " ORDER BY id DESC LIMIT 1",
+        array( (int) $p_bug_id, (int) $p_step_id )
+    );
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row === false ) {
+        return false; // bu adımda SLA yok (sla_hours = 0)
+    }
+
+    $t_new_deadline = (int) $t_row['deadline_at'] + (int) $p_closed_seconds;
+
+    // SLA'yı yeniden aktive et: completed_at temizle, deadline'ı ötele, bildirim/eskalasyon sıfırla
+    db_param_push();
+    db_query(
+        "UPDATE $t_table SET completed_at = NULL, deadline_at = " . db_param()
+        . ", sla_status = " . db_param()
+        . ", notified_warning = 0, notified_exceeded = 0, escalation_level = 0"
+        . " WHERE id = " . db_param(),
+        array( $t_new_deadline, SLA_STATUS_NORMAL, (int) $t_row['id'] )
+    );
+    return true;
+}
+
+/**
  * Calculate SLA deadline considering business hours (minute precision) and working days.
  *
  * @param int $p_start_time Unix timestamp start

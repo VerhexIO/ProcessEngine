@@ -52,6 +52,18 @@
             });
         });
 
+        // Süreci yeniden açma (reopen) — kapanmış süreç, SLA kaldığı yerden devam
+        document.querySelectorAll('.pe-bugview-reopen').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var bugId = this.getAttribute('data-bug-id');
+                if (!confirm(this.getAttribute('title') || 'Süreci yeniden açmak istediğinize emin misiniz?')) {
+                    return;
+                }
+                peDoBugViewAction('reopen_process', bugId, this, {});
+            });
+        });
+
         // İlerleme modalı ile adım ilerletme
         document.querySelectorAll('.pe-bugview-advance').forEach(function(btn) {
             btn.addEventListener('click', function(e) {

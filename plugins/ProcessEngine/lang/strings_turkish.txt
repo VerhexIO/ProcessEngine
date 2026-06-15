@@ -211,9 +211,26 @@ $s_plugin_ProcessEngine_sla_tree_worst = 'En Kötü Durum';
 # Dashboard Aksiyonları (Faz 7)
 $s_plugin_ProcessEngine_config_action_threshold = 'İşlem Yetki Seviyesi';
 $s_plugin_ProcessEngine_config_action_threshold_help = 'Dashboard üzerinden adım ilerleme ve SLA güncelleme işlemlerini yapabilecek minimum yetki seviyesi';
+$s_plugin_ProcessEngine_config_rule_bypass_threshold = 'Kural Muafiyet Eşiği';
+$s_plugin_ProcessEngine_config_rule_bypass_threshold_help = 'Bu yetki seviyesi ve üstü ileri/geri adım kurallarını atlayabilir (acil müdahale). "Muafiyet yok" seçilirse admin/root dahil herkes kurallara tabidir.';
+$s_plugin_ProcessEngine_rule_bypass_none = 'Muafiyet yok (herkes kurala tabi)';
+$s_plugin_ProcessEngine_config_reopen_threshold = 'Süreç Yeniden Açma Eşiği';
+$s_plugin_ProcessEngine_config_reopen_threshold_help = 'Bu yetki seviyesi ve üstü kapanmış (tamamlanmış/iptal) süreçleri yeniden açabilir; yeniden açılan süreçte SLA kaldığı yerden devam eder.';
 $s_plugin_ProcessEngine_action_advance_confirm = 'Bu sorunu sonraki adıma ilerletmek istediğinize emin misiniz?';
 $s_plugin_ProcessEngine_action_advance_success = 'Sorun başarıyla sonraki adıma ilerletildi.';
 $s_plugin_ProcessEngine_action_advance_no_transition = 'Bu adımdan çıkan geçerli bir geçiş bulunamadı.';
+
+// Katı kural motoru (Faz 15)
+$s_plugin_ProcessEngine_transition_default_label = 'Geçiş';
+$s_plugin_ProcessEngine_rule_block_status_is = 'İlerlenemiyor: "%1$s" geçişinin koşulu sağlanmalı — sorun durumu "%2$s" olmalı.';
+$s_plugin_ProcessEngine_rule_block_field_equals = 'İlerlenemiyor: "%1$s" geçişinin koşulu sağlanmalı — "%2$s" alanı "%3$s" olmalı.';
+$s_plugin_ProcessEngine_rollback_blocked_subprocess = 'Geri alma engellendi: önce tamamlanmış alt süreç #%1$d iptal edilmeli.';
+$s_plugin_ProcessEngine_btn_reopen = 'Süreci Yeniden Aç';
+$s_plugin_ProcessEngine_reopen_confirm = 'Bu kapanmış süreci yeniden açmak istediğinize emin misiniz? SLA kaldığı yerden devam edecek (kapalı kalınan süre hariç).';
+$s_plugin_ProcessEngine_reopen_success = 'Süreç yeniden açıldı; SLA kaldığı yerden devam ediyor.';
+$s_plugin_ProcessEngine_reopen_not_closed = 'Süreç kapalı değil; yalnızca tamamlanmış/iptal süreçler yeniden açılabilir.';
+$s_plugin_ProcessEngine_reopen_access_denied = 'Bu süreci yeniden açma yetkiniz yok.';
+$s_plugin_ProcessEngine_reopen_log_note = 'Süreç yeniden açıldı (SLA devam).';
 $s_plugin_ProcessEngine_action_sla_refreshed = 'SLA durumu güncellendi.';
 $s_plugin_ProcessEngine_action_invalid = 'Geçersiz işlem.';
 
